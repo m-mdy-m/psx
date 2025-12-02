@@ -1,13 +1,13 @@
 # Software Requirements Specification
 ## PSX - Project Structure Checker
 
-**Version:** 1.0.0  
-**Author:** Genix (m-mdy-m)  
-**Contact:** bitsgenix@gmail.com  
-**Repository:** https://github.com/m-mdy-m/psx
-**Date:** 2025-12-02
-**Status:** Draft  
-**Confidentiality:** Internal
+- **Version:** 1.0.0  
+- **Author:** Genix (m-mdy-m)  
+- **Contact:** bitsgenix@gmail.com  
+- **Repository:** [m-mdy-m/psx](https://github.com/m-mdy-m/psx)
+- **Date:** 2025-12-02
+- **Status:** Draft  
+- **Confidentiality:** Internal
 
 ---
 
