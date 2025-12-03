@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+dist/
+*.exe
+
+# Test coverage
+coverage/
+
+# IDE stuff
+.vscode/
+tags*
+
+# Go specific
+vendor/
+*.prof
+
+# Don't commit binaries except in releases
+psx
+!scripts/psx

@@ -1,0 +1,28 @@
+root = true
+
+# Defaults for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_size = 2
+indent_style = space
+
+# Go files
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false 
+
+# Shell scripts
+[*.{sh,bash}]
+end_of_line = lf
+
+# Makefiles
+[{Makefile,*.mk}]
+indent_style = tab
+indent_size = 4

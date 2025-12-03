@@ -1,0 +1,71 @@
+# PSX Default Configuration
+# This is the base config used when you don't have a psx.yml
+
+version: 1
+
+# Project type auto-detection
+# Leave empty to auto-detect
+project_type: ""
+
+# Rules configuration
+rules:
+  # General stuff every project should have
+  general:
+    readme_required: error        # README.md is pretty important
+    license_required: warning     # you should have a license but not critical
+    gitignore_required: warning   # .gitignore recommended
+    changelog_required: false     # optional, good for bigger projects
+    
+  # Project structure
+  structure:
+    src_folder_required: warning      # source code should be organized
+    tests_folder_required: error      # tests are important!
+    docs_folder_required: false       # nice to have
+    
+  # Documentation
+  documentation:
+    adr_recommended: false           # Architecture Decision Records (for big projects)
+    srs_required: false              # Software Requirements (probably overkill for most)
+    api_docs_required: false         # set to warning for libraries
+    contributing_guide: false        # good for open source
+    
+  # CI/CD
+  cicd:
+    github_actions: false            # recommended but not required
+    gitlab_ci: false
+    
+  # Code quality
+  quality:
+    pre_commit_hooks: false          # helpful but optional
+    editorconfig: false              # nice for teams
+    linter_config: false             # depends on language
+
+# Paths to ignore when scanning
+ignore:
+  - node_modules/
+  - vendor/
+  - .git/
+  - dist/
+  - build/
+  - coverage/
+  - "*.min.js"
+  - "*.map"
+  - .next/
+  - .cache/
+
+# Template settings
+templates:
+  readme:
+    language: "en"
+    style: "minimal"    # minimal, detailed, comprehensive
+    
+  license:
+    default: "MIT"
+    author: ""          # leave empty to use git config
+    email: ""           # leave empty to use git config
+    
+# Fix behavior
+fix:
+  interactive: true           # ask before making changes
+  create_backups: false      # set to true if you want backups
+  backup_dir: ".psx-backup"
