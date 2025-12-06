@@ -5,7 +5,6 @@ version: 1
 # Project detection (leave empty for auto-detect)
 project:
   type: ""               # e.g. "nodejs", "go", "python" - empty = auto-detect
-  language: ""           # optional: human-friendly language label
   allow_multiple: true   # if multiple ecosystems detected, return all
 
 rules:
