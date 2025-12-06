@@ -1,71 +1,96 @@
-# PSX Default Configuration
-# This is the base config used when you don't have a psx.yml
-
+# psx.default.yml
+# PSX - Default configuration. Use this when no psx.yml is present.
 version: 1
 
-# Project type auto-detection
-# Leave empty to auto-detect
-project_type: ""
+# Project detection (leave empty for auto-detect)
+project:
+  type: ""               # e.g. "nodejs", "go", "python" - empty = auto-detect
+  language: ""           # optional: human-friendly language label
+  allow_multiple: true   # if multiple ecosystems detected, return all
 
-# Rules configuration
 rules:
-  # General stuff every project should have
   general:
-    readme_required: error        # README.md is pretty important
-    license_required: warning     # you should have a license but not critical
-    gitignore_required: warning   # .gitignore recommended
-    changelog_required: false     # optional, good for bigger projects
-    
-  # Project structure
+    readme:
+      enabled: true
+      severity: error
+      patterns: ["README.md"]
+      message: "README.md is required."
+      fix_hint: ""
+      doc: "Add what the project does, install & usage examples, and license."
+    license:
+      enabled: true
+      severity: warning
+      patterns: ["LICENSE", "LICENSE.md", "package.json"]
+      message: "Add a LICENSE file or license field (use SPDX identifiers)."
+      fix_hint: ""
+    gitignore:
+      enabled: true
+      severity: warning
+      patterns: [".gitignore"]
+      message: ".gitignore recommended to exclude build artifacts."
+      fix_hint: ""
+    changelog:
+      enabled: true
+      severity: info
+      patterns: ["CHANGELOG.md"]
+      message: "Changelog is optional but recommended for releases."
+      fix_hint: ""
+
   structure:
-    src_folder_required: warning      # source code should be organized
-    tests_folder_required: error      # tests are important!
-    docs_folder_required: false       # nice to have
-    
-  # Documentation
+    src_folder:
+      enabled: true
+      severity: warning
+      patterns: ["src/", "lib/", "app/"]
+      message: "Organize source code under a dedicated folder (e.g. src/)."
+      fix_hint: ""
+    tests_folder:
+      enabled: true
+      severity: error
+      patterns: ["test/", "tests/", "**/*.spec.js", "**/*.test.*"]
+      message: "Tests directory or test files are required."
+      fix_hint: ""
+    docs_folder:
+      enabled: true
+      severity: info
+      patterns: ["docs/"]
+      message: "Project docs folder recommended."
+
   documentation:
-    adr_recommended: false           # Architecture Decision Records (for big projects)
-    srs_required: false              # Software Requirements (probably overkill for most)
-    api_docs_required: false         # set to warning for libraries
-    contributing_guide: false        # good for open source
-    
-  # CI/CD
+    adr:
+      enabled: false
+      severity: info
+      patterns: ["docs/adr/**", "adr/"]
+      message: "ADR recommended for significant architecture choices."
+    contributing:
+      enabled: true
+      severity: info
+      patterns: ["CONTRIBUTING.md"]
+      message: "Provide CONTRIBUTING.md for contributors."
+
   cicd:
-    github_actions: false            # recommended but not required
-    gitlab_ci: false
-    
-  # Code quality
+    github_actions:
+      enabled: true
+      severity: info
+      patterns: [".github/workflows/**/*.yml", ".github/workflows/**/*.yaml"]
+      message: "GitHub Actions workflow recommended for CI."
+      fix_hint: ""
+    gitlab_ci:
+      enabled: false
+      severity: info
+      patterns: [".gitlab-ci.yml"]
+      message: "GitLab CI config found."
+
   quality:
-    pre_commit_hooks: false          # helpful but optional
-    editorconfig: false              # nice for teams
-    linter_config: false             # depends on language
+    pre_commit:
+      enabled: false
+      severity: info
+      patterns: [".husky/", ".git/hooks/", ".pre-commit-config.yaml"]
+      message: "Pre-commit hooks recommended for quality gates."
+      fix_hint: ""
+    editorconfig:
+      enabled: false
+      severity: info
+      patterns: [".editorconfig"]
+      message: "EditorConfig helps keep consistent formatting."
+      fix_hint: ""
 
-# Paths to ignore when scanning
-ignore:
-  - node_modules/
-  - vendor/
-  - .git/
-  - dist/
-  - build/
-  - coverage/
-  - "*.min.js"
-  - "*.map"
-  - .next/
-  - .cache/
-
-# Template settings
-templates:
-  readme:
-    language: "en"
-    style: "minimal"    # minimal, detailed, comprehensive
-    
-  license:
-    default: "MIT"
-    author: ""          # leave empty to use git config
-    email: ""           # leave empty to use git config
-    
-# Fix behavior
-fix:
-  interactive: true           # ask before making changes
-  create_backups: false      # set to true if you want backups
-  backup_dir: ".psx-backup"
