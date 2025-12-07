@@ -9,7 +9,12 @@ type GlobalFlags struct {
 	NoColor bool
 }
 
-
+var DefaultGlobalFlags = GlobalFlags{
+	ConfigFile: "",
+	Verbose:    false,
+	Quiet:      false,
+	NoColor:    false,
+}
 // singletoon
 var (
 	flags *GlobalFlags
@@ -17,12 +22,7 @@ var (
 )
 func GetGlobalFlags() *GlobalFlags{
 	once.Do(func(){
-		flags = &GlobalFlags{
-			ConfigFile:"",
-			Verbose:false,
-			Quiet:false,
-			NoColor:false,
-		}
+		flags = &DefaultGlobalFlags
 	})
 	return flags
 }
