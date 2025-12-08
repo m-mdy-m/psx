@@ -36,20 +36,20 @@ rules:
       fix_hint: ""
 
   structure:
-    src_folder:
+    src:
       enabled: true
       severity: warning
       patterns: ["src/", "lib/", "app/"]
       message: "Organize source code under a dedicated folder (e.g. src/)."
       fix_hint: ""
-    tests_folder:
+    tests:
       enabled: true
       severity: error
       patterns: ["test/", "tests/", "**/*.spec.js", "**/*.test.*"]
       message: "Tests directory or test files are required."
       fix_hint: ""
 
-    docs_folder:
+    docs:
       enabled: true
       severity: info
       patterns: ["docs/"]

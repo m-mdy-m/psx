@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/m-mdy-m/psx/internal/cli"
 	"github.com/m-mdy-m/psx/internal/shared"
 )
 
@@ -15,16 +15,25 @@ func main(){
 		shared.Help()
 		os.Exit(0)
 	}
-	cmd:=Args[1]
-	switch cmd {
-	case "version","-v","--version":
-		fmt.Printf("PSX version %s\n",Version)
+//	cmd:=Args[1]
+//	switch cmd {
+//	case "version","-v","--version":
+//		fmt.Printf("PSX version %s\n",Version)
+//	case "help","-h","--help":
+//		cli.Exce(Version)
+//		shared.Help()
+	//case "init":
+	//case "fix":
+	//cass "check":
+	//case "rules":
+	//case "config":
 
-	case "help","-h","--help":
-		shared.Help()
-	default:
-		fmt.Printf("unknown commnd: %s \n\n",cmd)
-		shared.Help()
+//	default:
+//		fmt.Printf("unknown commnd: %s \n\n",cmd)
+//		shared.Help()
+//		os.Exit(1)
+//	}
+	if err:=cli.Exce(Version); err!=nil{
 		os.Exit(1)
 	}
 }
