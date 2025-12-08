@@ -5,7 +5,6 @@ version: 1
 # Project detection (leave empty for auto-detect)
 project:
   type: ""               # e.g. "nodejs", "go", "python" - empty = auto-detect
-  allow_multiple: true   # if multiple ecosystems detected, return all
 
 rules:
   general:
@@ -22,6 +21,7 @@ rules:
       patterns: ["LICENSE", "LICENSE.md", "package.json"]
       message: "Add a LICENSE file or license field (use SPDX identifiers)."
       fix_hint: ""
+      doc: ""
     gitignore:
       enabled: true
       severity: warning
@@ -48,6 +48,7 @@ rules:
       patterns: ["test/", "tests/", "**/*.spec.js", "**/*.test.*"]
       message: "Tests directory or test files are required."
       fix_hint: ""
+
     docs_folder:
       enabled: true
       severity: info

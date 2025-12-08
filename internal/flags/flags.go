@@ -1,31 +1,19 @@
-package shared
+package flags
 import (
-	"sync"
+   "sync"
 )
-type GlobalFlags struct {
-	ConfigFile string
-	Verbose bool
-	Quiet bool
-	NoColor bool
-}
-
-
 // singletoon
 var (
-	flags *GlobalFlags
+    instance *Flags
 	once sync.Once
 )
-func GetGlobalFlags() *GlobalFlags{
+func GetFlags() *Flags{
 	once.Do(func(){
-		flags = &GlobalFlags{
-			ConfigFile:"",
-			Verbose:false,
-			Quiet:false,
-			NoColor:false,
-		}
+        instance = &DefaultValues
 	})
-	return flags
+	return instance
 }
+/// global flags getter/setter
 // getters
 func (g*GlobalFlags) GetConfigFile() string{
 	return g.ConfigFile
