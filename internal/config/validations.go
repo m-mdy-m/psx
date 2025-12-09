@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 )
 
@@ -29,13 +28,22 @@ func Validate(c *Config) ValidationResult{
 		result.Warnings = append(result.Warnings,warnings...)
 	}
 
-	if errs,warns := ValidateRules(&c.Rules); len(errs)>0 || len(warns)>0{
+	if errs,warns := ValidateRules(c.Rules); len(errs)>0 || len(warns)>0{
 		result.Errors   = append(result.Errors, errs...)
 		result.Warnings = append(result.Warnings, warns...)
 		if len(errs)>0{
 			result.Valid = false
 		}
 	}
+
+	if warns := validateIgnorePatterns(c.Ignore); len(warns) > 0 {
+		result.Warnings = append(result.Warnings, warns...)
+	}
+
+	if warns := validateFixConfig(&c.Fix); len(warns) > 0 {
+		result.Warnings = append(result.Warnings, warns...)
+	}
+
 	return result
 }
 func ValidateVersion(version int) *ValidationError{
@@ -54,203 +62,133 @@ func ValidateProjectType(pt string)[]string{
 	if pt == ""{
 		return warnings
 	}
-	supported :=[]string{
+	supportedLang :=[]string{
 		"javascript",
 	}
 	found:=false
-	found = slices.Contains(supported, pt)
+	for _,supported := range supportedLang{
+		if pt == supported{
+			found = true
+			break
+		}
+	}
 	if !found{
 		warnings=append(warnings,fmt.Sprintf(
 			"project.type '%s' is not a known type (supported: %s). Will use generic rules.",
 			pt,
-			strings.Join(supported,", "),
+			strings.Join(supportedLang,", "),
 		))
 	}
 	return warnings
 }
-func ValidateRules(rules *RulesType) ([]ValidationError, []string) {
+func ValidateRules(rules map[string]RulesSeverity) ([]ValidationError, []string) {
 	errors := []ValidationError{}
 	warnings := []string{}
-
-	if errs, warns := validateGeneralRules(&rules.General); len(errs) > 0 || len(warns) > 0 {
-		errors   = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-	if errs, warns := validateStructureRules(&rules.Structure); len(errs) > 0 || len(warns) > 0 {
-		errors   = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	if errs, warns := validateDocumentationRules(&rules.Documentation); len(errs) > 0 || len(warns) > 0 {
-		errors   = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	if errs, warns := validateCiCdRules(&rules.CiCd); len(errs) > 0 || len(warns) > 0 {
-		errors   = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	if errs, warns := validateQualityRules(&rules.Quality); len(errs) > 0 || len(warns) > 0 {
-		errors   = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	return errors, warnings
-}
-func validateGeneralRules(general *GeneralType) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-
-	// README
-	if errs, warns := validateRuleOptions("general.readme", &general.Readme); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// License
-	if errs, warns := validateRuleOptions("general.license", &general.License); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// Gitignore
-	if errs, warns := validateRuleOptions("general.gitignore", &general.Gitignore); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// Changelog
-	if errs, warns := validateRuleOptions("general.changelog", &general.Changelog); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	return errors, warnings
-}
-
-func validateStructureRules(structure *StructureType) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-
-	// Src folder
-	if errs, warns := validateRuleOptions("structure.src", &structure.Src); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// Tests folder
-	if errs, warns := validateRuleOptions("structure.tests", &structure.Tests); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// Docs folder
-	if errs, warns := validateRuleOptions("structure.docs", &structure.Docs); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-	return errors, warnings
-}
-
-func validateDocumentationRules(documentation *DocumentationType) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-
-	// ADR
-	if errs, warns := validateRuleOptions("documentation.adr", &documentation.ADR); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// Contributing
-	if errs, warns := validateRuleOptions("documentation.contributing", &documentation.Contributing); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	return errors, warnings
-}
-
-func validateCiCdRules(cicd *CiCdType) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-
-	// GitHub Actions
-	if errs, warns := validateRuleOptions("cicd.github_actions", &cicd.GithubActions); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// GitLab CI
-	if errs, warns := validateRuleOptions("cicd.gitlab_ci", &cicd.GitlabCi); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	return errors, warnings
-}
-
-func validateQualityRules(quality *QualituType) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-
-	// Pre-commit
-	if errs, warns := validateRuleOptions("quality.pre_commit", &quality.PreCommit); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	// EditorConfig
-	if errs, warns := validateRuleOptions("quality.editorconfig", &quality.EditorConfig); len(errs) > 0 || len(warns) > 0 {
-		errors = append(errors, errs...)
-		warnings = append(warnings, warns...)
-	}
-
-	return errors, warnings
-}
-
-func validateRuleOptions(rulePath string, rule *RulesOptions) ([]ValidationError, []string) {
-	errors := []ValidationError{}
-	warnings := []string{}
-	if !rule.Enabled {
+	if rules == nil || len(rules)==0{
+		warnings = append(warnings,"No rules configured")
 		return errors, warnings
 	}
 
-	validSeverities := []string{"error", "warning", "info"}
-	if !slices.Contains(validSeverities, rule.Severity) {
-		errors = append(errors, ValidationError{
-			Field: rulePath + ".severity",
+	metadata := GetRulesMetadata()
+
+	for id,severtity := range rules{
+		if _,exists:= metadata.Rules[id]; !exists{
+			warnings = append(warnings,fmt.Sprintf(
+				"Unknown rule '%s' - will be ignored",id))
+			continue
+		}
+		if err := validateRuleSeverity(id,severtity); err !=nil{
+			errors = append(errors,*err)
+		}
+	}
+
+	criticalRules := []string{"readme","license"}
+	for _,id := range criticalRules{
+		if sev,exists := rules[id]; exists{
+			if b,ok := sev.(bool);ok && !b{
+				warnings = append(warnings,fmt.Sprintf("Critical rule '%s' is disabled - this is not recommended",	id))
+			}
+		}
+	}
+	return errors,warnings
+}
+
+func validateRuleSeverity(ruleID string, severity RulesSeverity) *ValidationError {
+	// Can be boolean (false = disabled)
+	if b, ok := severity.(bool); ok {
+		if !b {
+			// Disabled is valid
+			return nil
+		}
+		return &ValidationError{
+			Field:   fmt.Sprintf("rules.%s", ruleID),
+			Message: "invalid value 'true' - use 'error', 'warning', or 'info' instead",
+		}
+	}
+	if s, ok := severity.(string); ok {
+		validSeverities := []string{"error", "warning", "info"}
+		for _, valid := range validSeverities {
+			if s == valid {
+				return nil // Valid
+			}
+		}
+		return &ValidationError{
+			Field: fmt.Sprintf("rules.%s", ruleID),
 			Message: fmt.Sprintf(
-				"invalid severity '%s' (valid: %s)",
-				rule.Severity,
+				"invalid severity '%s' (valid: %s, or false to disable)",
+				s,
 				strings.Join(validSeverities, ", "),
 			),
-		})
+		}
 	}
 
-	if len(rule.Patterns) == 0 {
-		warnings = append(warnings, fmt.Sprintf(
-			"%s.patterns is empty - rule may not work correctly",
-			rulePath,
-		))
+	// Unknown type
+	return &ValidationError{
+		Field:   fmt.Sprintf("rules.%s", ruleID),
+		Message: fmt.Sprintf("invalid value type - must be 'error', 'warning', 'info', or false"),
+	}
+}
+
+func validateIgnorePatterns(patterns []string) []string {
+	warnings := []string{}
+
+	if len(patterns) == 0 {
+		// No patterns is OK, just informational
+		return warnings
 	}
 
-	if strings.TrimSpace(rule.Message) == "" {
-		warnings = append(warnings, fmt.Sprintf(
-			"%s.message is empty - users won't know what's wrong",
-			rulePath,
-		))
-	}
-
-	for i, pattern := range rule.Patterns {
+	for i, pattern := range patterns {
 		if strings.TrimSpace(pattern) == "" {
 			warnings = append(warnings, fmt.Sprintf(
-				"%s.patterns[%d] is empty",
-				rulePath, i,
+				"ignore[%d] is empty",
+				i,
+			))
+			continue
+		}
+
+		if pattern == "*" || pattern == "**" {
+			warnings = append(warnings, fmt.Sprintf(
+				"ignore[%d]: pattern '%s' will ignore everything - is this intentional?",
+				i, pattern,
+			))
+		}
+
+		// Warn about absolute paths
+		if strings.HasPrefix(pattern, "/") {
+			warnings = append(warnings, fmt.Sprintf(
+				"ignore[%d]: absolute path '%s' - relative paths are recommended",
+				i, pattern,
 			))
 		}
 	}
-	return errors, warnings
+
+	return warnings
+}
+
+// validateFixConfig validates fix configuration
+func validateFixConfig(fix *FixConfig) []string {
+	warnings := []string{}
+	// Note: interactive and create_backups are just booleans, always valid
+	return warnings
 }
 
