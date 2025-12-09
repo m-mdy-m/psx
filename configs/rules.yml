@@ -1,0 +1,219 @@
+# PSX Rules Metadata
+# don't edit this
+rules:
+  # ============================================
+  # General Rules
+  # ============================================
+  readme:
+    id: "README_REQUIRED"
+    category: general
+    description: "Every project should have a README file"
+    severity: error
+    patterns:
+      - README.md
+      - README
+      - readme.md
+    message: "README.md file not found in project root"
+    fix_hint: "psx fix --rule readme"
+    doc_url: "..."
+
+  license:
+    id: "LICENSE_REQUIRED"
+    category: general
+    description: "Projects should have a clear license"
+    severity: warning
+    patterns:
+      - LICENSE
+      - LICENSE.md
+      - LICENSE.txt
+      - COPYING
+    additional_checks:
+      - package.json:license  # Check license field in package.json
+      - Cargo.toml:license     # Check license field in Cargo.toml
+    message: "No LICENSE file found"
+    fix_hint: "psx fix --rule license"
+    doc_url: "https://choosealicense.com"
+  gitignore:
+    id: "GITIGNORE_REQUIRED"
+    category: general
+    description: "Exclude unnecessary files from version control"
+    severity: warning
+    patterns:
+      - .gitignore
+    message: "No .gitignore file found"
+    fix_hint: "psx fix --rule gitignore"
+    doc_url: "https://git-scm.com/docs/gitignore"
+
+  changelog:
+    id: "CHANGELOG_RECOMMENDED"
+    category: general
+    description: "Track notable changes in your project"
+    severity: info
+    patterns:
+      - CHANGELOG.md
+      - CHANGELOG
+      - HISTORY.md
+    message: "No CHANGELOG file found"
+    fix_hint: "psx fix --rule changelog"
+    doc_url: "https://keepachangelog.com"
+  # ============================================
+  # Structure Rules
+  # ============================================
+  src_folder:
+    id: "SRC_FOLDER_REQUIRED"
+    category: structure
+    description: "Organize source code in a dedicated folder"
+    severity: warning
+    patterns:
+      nodejs:
+        - src/
+        - lib/
+      go:
+        - cmd/
+        - internal/
+        - pkg/
+      python:
+        - src/
+        - package_name/
+
+    message: "No source folder found"
+    fix_hint: "psx fix --rule src_folder"
+    doc_url: ""
+
+  tests_folder:
+    id: "TESTS_FOLDER_REQUIRED"
+    category: structure
+    description: "Every project needs tests"
+    severity: error
+    patterns:
+      nodejs:
+        - test/
+        - tests/
+        - __tests__/
+      go:
+        - "**/*_test.go"
+      python:
+        - tests/
+        - test/
+    message: "No tests found"
+    fix_hint: "psx fix --rule tests_folder"
+    doc_url: ""
+
+  docs_folder:
+    id: "DOCS_FOLDER_RECOMMENDED"
+    category: structure
+    description: "Dedicated folder for documentation"
+    severity: info
+    patterns:
+      - docs/
+      - documentation/
+      - doc/
+    message: "No docs/ folder found"
+    fix_hint: "psx fix --rule docs_folder"
+    doc_url: ""
+
+  # ============================================
+  # Documentation Rules
+  # ============================================
+  adr:
+    id: "ADR_RECOMMENDED"
+    category: documentation
+    description: "Document important architecture decisions"
+    severity: info
+    patterns:
+      - docs/adr/
+      - docs/architecture/decisions/
+      - adr/
+    message: "No ADR folder found"
+    fix_hint: "psx fix --rule adr"
+    doc_url: "https://adr.github.io"
+
+  contributing:
+    id: "CONTRIBUTING_RECOMMENDED"
+    category: documentation
+    description: "Guide for contributors"
+    severity: info
+    patterns:
+      - CONTRIBUTING.md
+      - .github/CONTRIBUTING.md
+      - docs/CONTRIBUTING.md
+    message: "No CONTRIBUTING.md file found"
+    fix_hint: "psx fix --rule contributing"
+    doc_url: "https://docs.github.com/en/communities"
+
+  api_docs:
+    id: "API_DOCS_REQUIRED"
+    category: documentation
+    description: "Document your public API (for libraries)"
+    severity: warning
+    patterns:
+      nodejs:
+        - docs/api/
+        - README.md:api  # API section in README
+      go:
+        - "**/*.go:doc"  # godoc comments
+      python:
+        - docs/api/
+        - "**/*.py:docstring"
+    message: "No API documentation found"
+    fix_hint: "Add API documentation in docs/api/ or inline comments"
+    doc_url: ""
+
+  # ============================================
+  # CI/CD Rules
+  # ============================================
+
+  ci_config:
+    id: "CI_CONFIG_RECOMMENDED"
+    category: cicd
+    description: "Automated testing and deployment"
+    severity: info
+    patterns:
+      - .github/workflows/
+      - .gitlab-ci.yml
+      - .circleci/config.yml
+      - .travis.yml
+      - Jenkinsfile
+    message: "No CI/CD configuration found"
+    fix_hint: "psx fix --rule ci_config"
+    doc_url: ""
+  # ============================================
+  # Quality Rules
+  # ============================================
+
+  pre_commit:
+    id: "PRE_COMMIT_RECOMMENDED"
+    category: quality
+    description: "Run checks before committing"
+    default_severity: info
+    patterns:
+      - .pre-commit-config.yaml
+      - .husky/
+      - .git/hooks/pre-commit
+    message: "No pre-commit hooks found"
+    fix_hint: "psx fix --rule pre_commit"
+    doc_url: "https://pre-commit.com"
+
+  editorconfig:
+    id: "EDITORCONFIG_RECOMMENDED"
+    category: quality
+    description: "Consistent coding style across editors"
+    severity: info
+    patterns:
+      - .editorconfig
+    message: "No .editorconfig file found"
+    fix_hint: "psx fix --rule editorconfig"
+    doc_url: "https://editorconfig.org"
+
+  code_owners:
+    id: "CODE_OWNERS_RECOMMENDED"
+    category: quality
+    description: "Define code ownership for reviews"
+    severity: info
+    patterns:
+      - CODEOWNERS
+      - .github/CODEOWNERS
+      - docs/CODEOWNERS
+    message: "No CODEOWNERS file found"
+    fix_hint: "psx fix --rule code_owners"
+    doc_url: "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
