@@ -1,0 +1,41 @@
+# PSX Default Configuration
+# Version 1.0.0
+version: 1
+# Project detection (auto-detect if empty)
+project:
+  type: ""  # nodejs, go, rust, python, java - empty = auto-detect
+# Rules configuration
+# Severity: "error" | "warning" | "info" | false (disabled)
+rules:
+  # General rules
+  readme: error
+  license: warning
+  gitignore: warning
+  changelog: info
+  # Structure rules
+  src_folder: warning
+  tests_folder: error
+  docs_folder: info
+  # Documentation rules
+  adr: false
+  contributing: info
+  api_docs: warning  # Only for libraries
+  # CI/CD rules
+  ci_config: info
+  # Quality rules␍
+  pre_commit: info
+  editorconfig: false
+  code_owners: false
+# Ignore patterns (like .gitignore)
+ignore:
+  - node_modules/
+  - vendor/
+  - .git/
+  - dist/
+  - build/
+  - coverage/
+
+# Fix behavior
+fix:
+  interactive: true          # Ask before each fix
+  backup: false      # Create .backup files

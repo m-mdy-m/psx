@@ -1,4 +1,5 @@
 package config
+
 type ValidationError struct {
 	Field		string
 	Message		string
@@ -9,53 +10,53 @@ type ValidationResult struct{
 	Warnings	[]string
 }
 
-// rules structre
-type RulesOptions struct {
-	Enabled   bool     `yaml:"enabled"`
-	Severity  string   `yaml:"severity"`
-	Patterns  []string `yaml:"patterns"`
-	Message   string   `yaml:"message"`
-	FixHint   string   `yaml:"fix_hint"`
-	Doc       string   `yaml:"doc"`
-}
-type GeneralType struct {
-	Readme			RulesOptions	`yaml:"readme"`
-	License			RulesOptions	`yaml:"license"`
-	Gitignore		RulesOptions	`yaml:"gitignore"`
-	Changelog		RulesOptions	`yaml:"changelog"`
-}
-type StructureType struct{
-	Src				RulesOptions	 `yaml:"src"`
-	Tests			RulesOptions	 `yaml:"tests"`
-	Docs			RulesOptions	 `yaml:"docs"`
-}
-type DocumentationType struct{
-	ADR				RulesOptions	 `yaml:"adrs"`
-	Contributing	RulesOptions	 `yaml:"contributing"`
-}
-type CiCdType struct{
-	GithubActions	RulesOptions     `yaml:"gihub_actions"`
-	GitlabCi		RulesOptions	 `yaml:"gitlab_ci"`
-}
-type QualituType struct{
-	PreCommit		RulesOptions     `yaml:"pre_commit"`
-	EditorConfig    RulesOptions     `yaml:"editorconfig"`
-}
 
-type RulesType struct {
-	General			GeneralType		 `yaml:"general"`
-	Structure		StructureType	 `yaml:"structure"`
-	Documentation	DocumentationType`yaml:"documentation"`
-	CiCd			CiCdType         `yaml:"cicd"`
-	Quality         QualituType		 `yaml:"quality"`
-}
+// rules structre
+// can be: "error","warning","info", or false (disbled)
+type Severity string
+type RulesSeverity interface{}
 
 type ProjectType struct {
     Type	string		`yaml:"type"`
 }
-type Config struct {
-    Version int         `yaml:"version"`
-    Project ProjectType `yaml:"project"`
-	Rules RulesType     `yaml:"rules"`
+
+type FixConfig struct {
+	Interactive		bool    `yaml:"interactive"`
+	Backup			bool    `yaml:"backup"`
 }
 
+type Config struct {
+    Version int							 `yaml:"version"`
+	Project ProjectType					 `yaml:"project"`
+	Rules	map[string]RulesSeverity     `yaml:"rules"`
+	Ignore	[]string					 `yaml:"ignore,omitempty"`
+	Fix		FixConfig					 `yaml:"fix,omitempty"`
+}
+
+
+// RULES METADATA (GLOBAL)
+type LanguagePatterns interface{}
+
+// AdditionalCheck represents a check in a specific file
+type AdditionalCheck struct {
+	File  string // e.g., "package.json"
+	Field string // e.g., "license"
+}
+
+// RuleMetadata contains all information about a rule
+type RuleMetadata struct {
+	ID                string                 `yaml:"id"`
+	Category          string                 `yaml:"category"`
+	Description       string                 `yaml:"description"`
+	DefaultSeverity   Severity				 `yaml:"severity"`
+	Patterns          LanguagePatterns       `yaml:"patterns"` // []string or LanguagePatterns
+	AdditionalChecks  []string               `yaml:"additional_checks,omitempty"`
+	Message           string                 `yaml:"message"`
+	FixHint           string                 `yaml:"fix_hint"`
+	DocURL            string                 `yaml:"doc_url"`
+}
+
+// RulesMetadata contains all rule definitions
+type RulesMetadata struct {
+	Rules map[string]RuleMetadata `yaml:"rules"`
+}
