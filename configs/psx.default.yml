@@ -1,96 +1,41 @@
-# psx.default.yml
-# PSX - Default configuration. Use this when no psx.yml is present.
+# PSX Default Configuration
+# Version 1.0.0
 version: 1
-
-# Project detection (leave empty for auto-detect)
+# Project detection (auto-detect if empty)
 project:
-  type: ""               # e.g. "nodejs", "go", "python" - empty = auto-detect
-
+  type: ""  # nodejs, go, rust, python, java - empty = auto-detect
+# Rules configuration
+# Severity: "error" | "warning" | "info" | false (disabled)
 rules:
-  general:
-    readme:
-      enabled: true
-      severity: error
-      patterns: ["README.md"]
-      message: "README.md is required."
-      fix_hint: ""
-      doc: "Add what the project does, install & usage examples, and license."
-    license:
-      enabled: true
-      severity: warning
-      patterns: ["LICENSE", "LICENSE.md", "package.json"]
-      message: "Add a LICENSE file or license field (use SPDX identifiers)."
-      fix_hint: ""
-      doc: ""
-    gitignore:
-      enabled: true
-      severity: warning
-      patterns: [".gitignore"]
-      message: ".gitignore recommended to exclude build artifacts."
-      fix_hint: ""
-    changelog:
-      enabled: true
-      severity: info
-      patterns: ["CHANGELOG.md"]
-      message: "Changelog is optional but recommended for releases."
-      fix_hint: ""
+  # General rules
+  readme: error
+  license: warning
+  gitignore: warning
+  changelog: info
+  # Structure rules
+  src_folder: warning
+  tests_folder: error
+  docs_folder: info
+  # Documentation rules
+  adr: false
+  contributing: info
+  api_docs: warning  # Only for libraries
+  # CI/CD rules
+  ci_config: info
+  # Quality rules␍
+  pre_commit: info
+  editorconfig: false
+  code_owners: false
+# Ignore patterns (like .gitignore)
+ignore:
+  - node_modules/
+  - vendor/
+  - .git/
+  - dist/
+  - build/
+  - coverage/
 
-  structure:
-    src:
-      enabled: true
-      severity: warning
-      patterns: ["src/", "lib/", "app/"]
-      message: "Organize source code under a dedicated folder (e.g. src/)."
-      fix_hint: ""
-    tests:
-      enabled: true
-      severity: error
-      patterns: ["test/", "tests/", "**/*.spec.js", "**/*.test.*"]
-      message: "Tests directory or test files are required."
-      fix_hint: ""
-
-    docs:
-      enabled: true
-      severity: info
-      patterns: ["docs/"]
-      message: "Project docs folder recommended."
-
-  documentation:
-    adr:
-      enabled: false
-      severity: info
-      patterns: ["docs/adr/**", "adr/"]
-      message: "ADR recommended for significant architecture choices."
-    contributing:
-      enabled: true
-      severity: info
-      patterns: ["CONTRIBUTING.md"]
-      message: "Provide CONTRIBUTING.md for contributors."
-
-  cicd:
-    github_actions:
-      enabled: true
-      severity: info
-      patterns: [".github/workflows/**/*.yml", ".github/workflows/**/*.yaml"]
-      message: "GitHub Actions workflow recommended for CI."
-      fix_hint: ""
-    gitlab_ci:
-      enabled: false
-      severity: info
-      patterns: [".gitlab-ci.yml"]
-      message: "GitLab CI config found."
-
-  quality:
-    pre_commit:
-      enabled: false
-      severity: info
-      patterns: [".husky/", ".git/hooks/", ".pre-commit-config.yaml"]
-      message: "Pre-commit hooks recommended for quality gates."
-      fix_hint: ""
-    editorconfig:
-      enabled: false
-      severity: info
-      patterns: [".editorconfig"]
-      message: "EditorConfig helps keep consistent formatting."
-      fix_hint: ""
-
+# Fix behavior
+fix:
+  interactive: true          # Ask before each fix
+  backup: false      # Create .backup files
