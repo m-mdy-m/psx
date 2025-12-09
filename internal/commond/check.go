@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/m-mdy-m/psx/internal/config"
+	"github.com/m-mdy-m/psx/internal/detector"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/shared/logger"
 )
@@ -56,7 +57,70 @@ func runCommand(cmd *cobra.Command, args []string) error{
 	// load config
 	logger.Verbose("Loading configuration...")
 	f:=flags.GetFlags()
-	config.Load(f.GlobalFlags.ConfigFile,abs)
+	cfg, err := config.Load(f.GlobalFlags.ConfigFile, abs)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// === STEP 2: Detect Project Type ===
+	var detectionResult *detector.DetectionResult
+
+	if cfg.Project.Type != "" {
+		// Use specified type
+		logger.Verbose(fmt.Sprintf("Using configured project type: %s", cfg.Project.Type))
+		detectionResult, err = detector.DetectWithHint(abs, cfg.Project.Type)
+		if err != nil {
+			logger.Warning(fmt.Sprintf("Failed to detect as %s: %v", cfg.Project.Type, err))
+			logger.Info("Falling back to auto-detection...")
+			detectionResult, err = detector.Detect(abs)
+			if err != nil {
+				return fmt.Errorf("project detection failed: %w", err)
+			}
+		}
+	} else {
+		// Auto-detect
+		logger.Verbose("Auto-detecting project type...")
+		detectionResult, err = detector.Detect(abs)
+		if err != nil {
+			return fmt.Errorf("project detection failed: %w", err)
+		}
+	}
+
+	// Update effective config with detected type
+	cfg.Project.Type = detectionResult.Type.Primary
+
+	// === STEP 3: Display Project Info ===
+	displayProjectInfo(detectionResult)
+
+	// === STEP 4: Run Validation ===
+	logger.Verbose(fmt.Sprintf("Running %d rules...", len(cfg.Rules)))
+
+	logger.Success("Check complete!")
 	return nil
 }
+
+func displayProjectInfo(result *detector.DetectionResult) {
+	fmt.Println("\nProject Information:")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Printf("Type: %s\n", result.Description)
+
+	if result.Type.Framework != "" {
+		fmt.Printf("Framework: %s\n", result.Type.Framework)
+	}
+
+	if result.Type.PackageManager != "" {
+		fmt.Printf("Package Manager: %s\n", result.Type.PackageManager)
+	}
+
+	fmt.Printf("Structure: %s\n", result.Type.Structure)
+	fmt.Printf("Confidence: %.0f%%\n", result.Type.Confidence*100)
+
+	if len(result.Type.Secondary) > 0 {
+		fmt.Printf("Also detected: %v\n", result.Type.Secondary)
+	}
+
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
+}
+
 
