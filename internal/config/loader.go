@@ -214,12 +214,12 @@ func getSeverity(rules map[string]RulesSeverity, id string, sev Severity) interf
 			switch s{
 			case "error":
 				return "error"
-			case "warnings":
-				return "warnings"
+			case "warning":
+				return "warning"
 			case "info":
 				return "info"
 			default:
-				logger.Warning("Invalid Severity '%s' using 'info-wrnings-error'")
+				logger.Warning(fmt.Sprintf("Invalid Severity '%s' using 'info-wrnings-error'",s))
 				return sev
 			}
 		}
