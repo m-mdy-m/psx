@@ -51,22 +51,7 @@ psx fix --interactive
 
 ## config
 
-create a `psx.yml` file in your project:
-```yaml
-version: 1
-
-rules:
-  general:
-    readme_required: error
-    license_required: warning
-    gitignore_required: warning
-  
-  structure:
-    src_folder_required: warning
-    tests_folder_required: error
-```
-
-or just init with a template:
+just init with a template:
 ```bash
 psx init --template node    # for nodejs projects
 psx init --template go      # for go projects
