@@ -13,12 +13,11 @@ var configFS embed.FS
 
 var (
 	globalMetadata			*RulesMetadata
-	defaultConfig					*Config
+	defaultConfig			*Config
 )
 func GetRulesMetadata() *RulesMetadata{
 	return globalMetadata
 }
-
 func init(){
 	var err error
 	globalMetadata,err = LoadRulesMetadata()
@@ -68,6 +67,11 @@ func LoadDefaultConfig() (*Config, error) {
 }
 
 func Load(cf string, pp string)(*Config,error){
+	var(
+		err			error
+		userConfig *Config
+	)
+
 	if cf == "" {
 		logger.Info("Searching for config file...")
 		found, err := FindConfigFile(pp)
@@ -79,12 +83,12 @@ func Load(cf string, pp string)(*Config,error){
 			return buildConfig(defaultConfig,pp)
 		}
 	}
-	cfg,err := ReadYamlFile(cf)
+	userConfig,err = ReadYamlFile(cf)
 	if err != nil{
 		return nil,fmt.Errorf("failed to load config from %s: %w",cf,err)
 	}
 
-	result := Validate(cfg)
+	result := Validate(userConfig)
 
 	if HasWarnings(result) {
 		logger.Warning("Configuration warnings:")
@@ -101,7 +105,7 @@ func Load(cf string, pp string)(*Config,error){
 	}
 
 	logger.Success("Configuration loaded and validated")
-	return cfg,nil
+	return buildConfig(userConfig,pp)
 }
 func FindConfigFile(pp string)(string,error){
 	candidates := []string {
@@ -149,42 +153,50 @@ func FindConfigFile(pp string)(string,error){
 		}
 	}
 	/// bro you don't install
-	return "", fmt.Errorf("no config file found", pp)
+	return "", fmt.Errorf("no config file found in %s", pp)
 }
 func buildConfig(uc *Config, pp string) (*Config, error) {
 	config := &Config{
 		Version:		uc.Version,
 		Project:		uc.Project,
-		Rules:			uc.Rules,
+		Rules:		    uc.Rules,
 		Ignore:			uc.Ignore,
 		Fix:			uc.Fix,
+
+		Path:           pp,
+		ActiveRules:    make(map[string]*ActiveRule),
 	}
-	if config.Project.Type == ""{
-		logger.Verbose("Project type not specified, will auto-detect")
-	}
+
+	enabledCount  :=0
+	disabledCount :=0
 
 	for id,meta := range globalMetadata.Rules{
-		severity := getSeverity(uc.Rules,id,meta.DefaultSeverity)
+		var userSev any
+		if uc.Rules != nil{
+			if val,exists := uc.Rules[id];exists{
+				userSev = val
+			}
+		}
 
-		if severity !=nil{
+		severity, err := ParseSeverity(userSev,meta.DefaultSeverity)
+		if err != nil{
+			logger.Warning(fmt.Sprintf("Rule %s: %v, using default (%s)",id,err,meta.DefaultSeverity))
+			severity = &meta.DefaultSeverity
+		}
+		if severity == nil{
 			logger.Verbose(fmt.Sprintf("Rule %s is disabled",id))
+			disabledCount++
 			continue
 		}
-		//	patterns := getPatterns(meta.Patterns,config.Project.Type)
-		rulesMetadata := &RuleMetadata{
-				ID:				 meta.ID,
-				Category:		 meta.Category,
-				Description:	 meta.Description,
-				DefaultSeverity: meta.DefaultSeverity,
-				Patterns:		 meta.Patterns,
-				AdditionalChecks:meta.AdditionalChecks,
-				Message:		 meta.Message,
-				FixHint:		 meta.FixHint,
-				DocURL:			 meta.DocURL,
+		config.ActiveRules[id] = &ActiveRule{
+			ID:				id,
+			Metadata:		meta,
+			Severity:		*severity,
 		}
-		config.Rules[id]= rulesMetadata
+		enabledCount++
+		logger.Verbose(fmt.Sprintf("Rule %s enabled with severity: %s",id,*severity))
 	}
-	logger.Verbose(fmt.Sprintf("config with %d active rules",len(config.Rules)))
+	logger.Verbose(fmt.Sprintf("config built: %d enabled, %d disabled rules",enabledCount,disabledCount))
 	return config,nil
 }
 
@@ -205,31 +217,9 @@ func ReadYamlFile(args string)(*Config,error){
 	return &cfg,nil
 }
 
-func getSeverity(rules map[string]RulesSeverity, id string, sev Severity) interface{} {
-	if userSev,exists := rules[id]; exists{
-		if b,ok :=userSev.(bool);ok && !b{
-			return nil
-		}
-		if s,ok := userSev.(string);ok{
-			switch s{
-			case "error":
-				return "error"
-			case "warning":
-				return "warning"
-			case "info":
-				return "info"
-			default:
-				logger.Warning(fmt.Sprintf("Invalid Severity '%s' using 'info-wrnings-error'",s))
-				return sev
-			}
-		}
-	}
-	return sev
-}
-
-func getPatterns(patterns interface{}, projectType string) []string {
+func GetPatterns(patterns any, projectType string) []string {
 	switch p := patterns.(type) {
-	case []interface{}:
+	case []any:
 		result := make([]string, 0, len(p))
 		for _, item := range p {
 			if s, ok := item.(string); ok {
@@ -238,10 +228,10 @@ func getPatterns(patterns interface{}, projectType string) []string {
 		}
 		return result
 
-	case map[string]interface{}:
+	case map[string]any:
 		if projectType != "" {
 			if langPatterns, exists := p[projectType]; exists {
-				if arr, ok := langPatterns.([]interface{}); ok {
+				if arr, ok := langPatterns.([]any); ok {
 					result := make([]string, 0, len(arr))
 					for _, item := range arr {
 						if s, ok := item.(string); ok {
@@ -253,7 +243,7 @@ func getPatterns(patterns interface{}, projectType string) []string {
 			}
 		}
 		if genericPatterns, exists := p["*"]; exists {
-			if arr, ok := genericPatterns.([]interface{}); ok {
+			if arr, ok := genericPatterns.([]any); ok {
 				result := make([]string, 0, len(arr))
 				for _, item := range arr {
 					if s, ok := item.(string); ok {

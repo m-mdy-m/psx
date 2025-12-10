@@ -10,11 +10,10 @@ type ValidationResult struct{
 	Warnings	[]string
 }
 
-
 // rules structre
 // can be: "error","warning","info", or false (disbled)
 type Severity string
-type RulesSeverity interface{}
+type RulesSeverity any
 
 type ProjectType struct {
     Type	string		`yaml:"type"`
@@ -25,17 +24,27 @@ type FixConfig struct {
 	Backup			bool    `yaml:"backup"`
 }
 
+type ActiveRule struct{
+	ID       string
+	Metadata RuleMetadata
+	Severity Severity
+}
+
 type Config struct {
     Version int							 `yaml:"version"`
 	Project ProjectType					 `yaml:"project"`
 	Rules	map[string]RulesSeverity     `yaml:"rules"`
 	Ignore	[]string					 `yaml:"ignore,omitempty"`
 	Fix		FixConfig					 `yaml:"fix,omitempty"`
+
+	// not in yml file
+	Path           string				  `yaml:"-"`
+	ActiveRules    map[string]*ActiveRule `yaml:"-"`
 }
 
 
 // RULES METADATA (GLOBAL)
-type LanguagePatterns interface{}
+type LanguagePatterns any
 
 // AdditionalCheck represents a check in a specific file
 type AdditionalCheck struct {
@@ -59,4 +68,9 @@ type RuleMetadata struct {
 // RulesMetadata contains all rule definitions
 type RulesMetadata struct {
 	Rules map[string]RuleMetadata `yaml:"rules"`
+}
+
+type RuleConfig struct {
+	Metadata  RuleMetadata
+	Severity  *Severity
 }
