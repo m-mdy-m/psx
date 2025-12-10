@@ -81,8 +81,6 @@ func Detect(projectPath string) (*DetectionResult, error) {
 	return bestResult, nil
 }
 
-// DetectWithHint detects project type with a language hint
-// The hint guides the detection but doesn't force it
 func DetectWithHint(projectPath string, hint string) (*DetectionResult, error) {
 	logger.Verbose(fmt.Sprintf("Detecting project type with hint: %s", hint))
 
@@ -244,12 +242,11 @@ func detectMixedProject(allResults []*DetectionResult, primary *DetectionResult)
 
 // normalizeLanguageName converts various language name formats to standard form
 func normalizeLanguageName(name string) string {
-	// Map of aliases to standard names
 	aliases := map[string]string{
 		"node":       "nodejs",
 		"javascript": "nodejs",
 		"js":         "nodejs",
-		"typescript": "nodejs", // TypeScript is detected as part of Node.js
+		"typescript": "nodejs",
 		"ts":         "nodejs",
 		"golang":     "go",
 		"rustlang":   "rust",
@@ -300,9 +297,6 @@ func GetDetector(language string) (Detector, error) {
 	}
 	return detector, nil
 }
-
-// QuickCheck performs a quick validation without full detection
-// Useful for checking if a project might be a certain language
 func QuickCheck(projectPath string, language string) bool {
 	detector, err := GetDetector(language)
 	if err != nil {
