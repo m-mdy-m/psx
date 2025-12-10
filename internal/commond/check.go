@@ -10,6 +10,8 @@ import (
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/detector"
 	"github.com/m-mdy-m/psx/internal/flags"
+	"github.com/m-mdy-m/psx/internal/reporter"
+	"github.com/m-mdy-m/psx/internal/rules"
 	"github.com/m-mdy-m/psx/internal/shared/logger"
 )
 
@@ -62,7 +64,9 @@ func runCommand(cmd *cobra.Command, args []string) error{
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// === STEP 2: Detect Project Type ===
+	logger.Verbose(fmt.Sprintf("Configuration loaded: %d active rules", len(cfg.ActiveRules)))
+
+
 	var detectionResult *detector.DetectionResult
 
 	if cfg.Project.Type != "" {
@@ -86,17 +90,25 @@ func runCommand(cmd *cobra.Command, args []string) error{
 		}
 	}
 
-	// Update effective config with detected type
 	cfg.Project.Type = detectionResult.Type.Primary
 
-	// === STEP 3: Display Project Info ===
-	displayProjectInfo(detectionResult)
-
-	// === STEP 4: Run Validation ===
+	if !f.GlobalFlags.Quiet{
+		displayProjectInfo(detectionResult)
+	}
 	logger.Verbose(fmt.Sprintf("Running %d rules...", len(cfg.Rules)))
 
-	logger.Success("Check complete!")
-	return nil
+	engine := rules.NewEngine(cfg,detectionResult)
+	execResult,err :=engine.Execute()
+	if err !=nil{
+		return fmt.Errorf("rule execution failed: %w",err)
+	}
+
+	rep := reporter.New(f.Check.OutputFormat, execResult)
+	if err := rep.Report(); err != nil {
+		return fmt.Errorf("failed to generate report: %w", err)
+	}
+
+	return determineExitCode(execResult, f.Check.FailOn)
 }
 
 func displayProjectInfo(result *detector.DetectionResult) {
@@ -124,3 +136,34 @@ func displayProjectInfo(result *detector.DetectionResult) {
 }
 
 
+func determineExitCode(result *rules.ExecutionResult, failOn string) error {
+	f := flags.GetFlags()
+
+	switch failOn {
+	case "error":
+		if result.Summary.Errors > 0 {
+			// Exit with code 1 but don't show usage
+			if !f.GlobalFlags.Quiet {
+				fmt.Println() // Empty line before final message
+				logger.Error(fmt.Sprintf("Validation failed: %d error(s) found", result.Summary.Errors))
+			}
+			os.Exit(1)
+		}
+	case "warning":
+		if result.Summary.Errors > 0 || result.Summary.Warnings > 0 {
+			if !f.GlobalFlags.Quiet {
+				fmt.Println()
+				logger.Error(fmt.Sprintf("Validation failed: %d error(s), %d warning(s) found",
+					result.Summary.Errors, result.Summary.Warnings))
+			}
+			os.Exit(1)
+		}
+	}
+
+	// Success
+	if !f.GlobalFlags.Quiet {
+		fmt.Println()
+		logger.Success("Validation passed! ✓")
+	}
+	return nil
+}

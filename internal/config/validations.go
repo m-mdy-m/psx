@@ -64,6 +64,7 @@ func ValidateProjectType(pt string)[]string{
 	}
 	supportedLang :=[]string{
 		"javascript",
+		"go",
 	}
 	found:=false
 	for _,supported := range supportedLang{
@@ -82,7 +83,7 @@ func ValidateProjectType(pt string)[]string{
 	return warnings
 }
 func ValidateRules(rules map[string]RulesSeverity) ([]ValidationError, []string) {
-	errors := []ValidationError{}
+	errors   := []ValidationError{}
 	warnings := []string{}
 	if rules == nil || len(rules)==0{
 		warnings = append(warnings,"No rules configured")
@@ -92,12 +93,13 @@ func ValidateRules(rules map[string]RulesSeverity) ([]ValidationError, []string)
 	metadata := GetRulesMetadata()
 
 	for id,severtity := range rules{
-		if _,exists:= metadata.Rules[id]; !exists{
+		ruleMeta,exists:= metadata.Rules[id]
+		if !exists{
 			warnings = append(warnings,fmt.Sprintf(
 				"Unknown rule '%s' - will be ignored",id))
 			continue
 		}
-		if err := validateRuleSeverity(id,severtity); err !=nil{
+		if err := validateRuleSeverity(id,severtity,ruleMeta.DefaultSeverity); err !=nil{
 			errors = append(errors,*err)
 		}
 	}
@@ -113,40 +115,15 @@ func ValidateRules(rules map[string]RulesSeverity) ([]ValidationError, []string)
 	return errors,warnings
 }
 
-func validateRuleSeverity(ruleID string, severity RulesSeverity) *ValidationError {
-	// Can be boolean (false = disabled)
-	if b, ok := severity.(bool); ok {
-		if !b {
-			// Disabled is valid
-			return nil
-		}
+func validateRuleSeverity(id string, severity RulesSeverity,defaultSev Severity) *ValidationError {
+	_,err :=ParseSeverity(severity,defaultSev)
+	if err !=nil{
 		return &ValidationError{
-			Field:   fmt.Sprintf("rules.%s", ruleID),
-			Message: "invalid value 'true' - use 'error', 'warning', or 'info' instead",
+			Field:		fmt.Sprintf("rules.%s",id),
+			Message:	err.Error(),
 		}
 	}
-	if s, ok := severity.(string); ok {
-		validSeverities := []string{"error", "warning", "info"}
-		for _, valid := range validSeverities {
-			if s == valid {
-				return nil // Valid
-			}
-		}
-		return &ValidationError{
-			Field: fmt.Sprintf("rules.%s", ruleID),
-			Message: fmt.Sprintf(
-				"invalid severity '%s' (valid: %s, or false to disable)",
-				s,
-				strings.Join(validSeverities, ", "),
-			),
-		}
-	}
-
-	// Unknown type
-	return &ValidationError{
-		Field:   fmt.Sprintf("rules.%s", ruleID),
-		Message: fmt.Sprintf("invalid value type - must be 'error', 'warning', 'info', or false"),
-	}
+	return nil
 }
 
 func validateIgnorePatterns(patterns []string) []string {
@@ -185,7 +162,7 @@ func validateIgnorePatterns(patterns []string) []string {
 	return warnings
 }
 
-// validateFixConfig validates fix configuration
+
 func validateFixConfig(fix *FixConfig) []string {
 	warnings := []string{}
 	// Note: interactive and create_backups are just booleans, always valid
