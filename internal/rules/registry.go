@@ -2,99 +2,58 @@ package rules
 
 import (
 	"fmt"
-	"sync"
+	reg	"github.com/m-mdy-m/psx/internal/registry"
+	"github.com/m-mdy-m/psx/internal/checker"
 )
 
-// Global executor registry
-var (
-	executorRegistry = &Registry{
-		executors: make(map[string]Executor),
-	}
-	registryOnce sync.Once
-)
-
-// Registry manages rule executors
-type Registry struct {
-	mu        sync.RWMutex
-	executors map[string]Executor
-}
-
-// Register adds an executor for a rule
-func Register(ruleID string, executor Executor) {
-	executorRegistry.mu.Lock()
-	defer executorRegistry.mu.Unlock()
-	executorRegistry.executors[ruleID] = executor
-}
-
-// RegisterFunc adds a function executor for a rule
-func RegisterFunc(ruleID string, fn ExecutorFunc) {
-	Register(ruleID, fn)
-}
-
-// GetExecutor retrieves an executor by rule ID
+var rulesReg = reg.New[Executor]("rules")
 func GetExecutor(ruleID string) (Executor, error) {
-	executorRegistry.mu.RLock()
-	defer executorRegistry.mu.RUnlock()
-
-	executor, exists := executorRegistry.executors[ruleID]
-	if !exists {
+	executor, ok := rulesReg.Get(ruleID)
+	if !ok {
 		return nil, fmt.Errorf("no executor registered for rule: %s", ruleID)
 	}
-
 	return executor, nil
 }
 
-// HasExecutor checks if an executor exists for a rule
 func HasExecutor(ruleID string) bool {
-	executorRegistry.mu.RLock()
-	defer executorRegistry.mu.RUnlock()
-	_, exists := executorRegistry.executors[ruleID]
-	return exists
+	_, ok := rulesReg.Get(ruleID)
+	return ok
 }
 
-// ListRegistered returns all registered rule IDs
 func ListRegistered() []string {
-	executorRegistry.mu.RLock()
-	defer executorRegistry.mu.RUnlock()
-
-	result := make([]string, 0, len(executorRegistry.executors))
-	for id := range executorRegistry.executors {
+	all :=	rulesReg.All()
+	result := make([]string, 0, len(all))
+	for id := range all {
 		result = append(result, id)
 	}
 	return result
 }
 
-// init registers all built-in executors
 func init() {
-	registryOnce.Do(func() {
-		// Register all built-in rule executors
-		registerBuiltinExecutors()
-	})
+	registerBuiltinExecutors()
 }
 
-// registerBuiltinExecutors registers all built-in rule executors
 func registerBuiltinExecutors() {
-	// General rules
-	RegisterFunc("readme", executeReadmeRule)
-	RegisterFunc("license", executeLicenseRule)
-	RegisterFunc("gitignore", executeGitignoreRule)
-	RegisterFunc("changelog", executeChangelogRule)
+	rulesReg.Add("readme", ExecutorFunc(checker.CheckReadmeRule))
+	rulesReg.Add("license", ExecutorFunc(checker.CheckLicenseRule))
+	rulesReg.Add("gitignore", ExecutorFunc(checker.CheckGitignoreRule))
+	rulesReg.Add("changelog", ExecutorFunc(checker.CheckChangelogRule))
 
 	// Structure rules
-	RegisterFunc("src_folder", executeSrcFolderRule)
-	RegisterFunc("tests_folder", executeTestsFolderRule)
-	RegisterFunc("docs_folder", executeDocsFolderRule)
+	rulesReg.Add("src_folder", ExecutorFunc(checker.CheckSrcFolderRule))
+	rulesReg.Add("tests_folder", ExecutorFunc(checker.CheckTestsFolderRule))
+	rulesReg.Add("docs_folder", ExecutorFunc(checker.CheckDocsFolderRule))
 
 	// Documentation rules
-	RegisterFunc("adr", executeADRRule)
-	RegisterFunc("contributing", executeContributingRule)
-	RegisterFunc("api_docs", executeAPIDocsRule)
+	rulesReg.Add("adr", ExecutorFunc(checker.CheckADRRule))
+	rulesReg.Add("contributing", ExecutorFunc(checker.CheckContributingRule))
+	rulesReg.Add("api_docs", ExecutorFunc(checker.CheckAPIDocsRule))
 
 	// CI/CD rules
-	RegisterFunc("ci_config", executeCIConfigRule)
+	rulesReg.Add("ci_config", ExecutorFunc(checker.CheckCIConfigRule))
 
 	// Quality rules
-	RegisterFunc("pre_commit", executePreCommitRule)
-	RegisterFunc("editorconfig", executeEditorconfigRule)
-	RegisterFunc("code_owners", executeCodeOwnersRule)
+	rulesReg.Add("pre_commit", ExecutorFunc(checker.CheckPreCommitRule))
+	rulesReg.Add("editorconfig", ExecutorFunc(checker.CheckEditorconfigRule))
+	rulesReg.Add("code_owners", ExecutorFunc(checker.CheckCodeOwnersRule))
 }
