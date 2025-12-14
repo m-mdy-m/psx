@@ -10,131 +10,138 @@ import (
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/detector"
 	"github.com/m-mdy-m/psx/internal/flags"
+	"github.com/m-mdy-m/psx/internal/logger"
 	"github.com/m-mdy-m/psx/internal/reporter"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/logger"
 )
 
 var CheckCmd = &cobra.Command{
-	Use: "check [path]",
-	Short: "Check project structure",
-	Long: `Validates project structure against configured rules.
+	Use:   "check [path]",
+	Short: "Validate project structure",
+	Long: `Validates your project structure against configured rules.
 
 Examples:
-  psx check                  # Check current directory
-  psx check ./my-project     # Check specific directory
-  psx check --verbose        # Detailed output
-  psx check --output json    # JSON output
-  psx check --level error    # Only show errors`,
-  Args: cobra.MaximumNArgs(1),
-  RunE:runCommand,
+  psx check                    # Check current directory
+  psx check ./my-project       # Check specific directory
+  psx check --verbose          # Show detailed information
+  psx check --output json      # JSON output
+  psx check --level error      # Only show errors
+  psx check --fail-on warning  # Exit with error on warnings`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runCheckCommand,
 }
 
-func init(){
-	f:=flags.GetFlags()
-	dcf:= flags.DefaultValues.Check
-	CheckCmd.Flags().StringVarP(&f.Check.OutputFormat,"output","o",dcf.OutputFormat,"output format (table|json)")
-	CheckCmd.Flags().StringVar(&f.Check.ServerityLevel,"level",dcf.ServerityLevel,"")
-	CheckCmd.Flags().StringVar(&f.Check.FailOn,"fail-on",dcf.FailOn,"exit code 1 when this severity found (error|warning)")
+func init() {
+	f := flags.GetFlags()
+	dcf := flags.DefaultValues.Check
+
+	CheckCmd.Flags().StringVarP(&f.Check.OutputFormat, "output", "o", dcf.OutputFormat,
+		"output format: table | json")
+
+	CheckCmd.Flags().StringVar(&f.Check.ServerityLevel, "level", dcf.ServerityLevel,
+		"filter by severity: error | warning | info | all")
+
+	CheckCmd.Flags().StringVar(&f.Check.FailOn, "fail-on", dcf.FailOn,
+		"exit with error when: error | warning")
 }
 
-func runCommand(cmd *cobra.Command, args []string) error{
-	// projet path
-	root:="."
-	if len(args)>0{
-		root=args[0]
+func runCheckCommand(cmd *cobra.Command, args []string) error {
+	// Get project path
+	root := "."
+	if len(args) > 0 {
+		root = args[0]
 	}
 
-	abs ,err:=filepath.Abs(root)
-	if err!=nil{
-		return fmt.Errorf("invalid project path: %w",err)
-	}
-	logger.Verbose(fmt.Sprintf("Checking project at: %s",abs))
-
-	// chek if project exist
-	if _,err := os.Stat(abs); os.IsNotExist(err){
-		return fmt.Errorf("project path does not exist: %s",abs)
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
 	}
 
-	// load config
+	f := flags.GetFlags()
+
+	// Validate path
+	if _, err := os.Stat(abs); os.IsNotExist(err) {
+		return fmt.Errorf("path does not exist: %s", abs)
+	}
+
+	logger.Verbose("Analyzing project...")
+	logger.Verbosef("Path: %s", abs)
+
+	// Load config
 	logger.Verbose("Loading configuration...")
-	f:=flags.GetFlags()
 	cfg, err := config.Load(f.GlobalFlags.ConfigFile, abs)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return fmt.Errorf("config load failed: %w", err)
 	}
+	logger.Verbosef("Loaded %d rules", len(cfg.ActiveRules))
 
-	logger.Verbose(fmt.Sprintf("Configuration loaded: %d active rules", len(cfg.ActiveRules)))
-
-
+	// Detect project type
+	logger.Verbose("Detecting project type...")
 	var detectionResult *detector.DetectionResult
 
 	if cfg.Project.Type != "" {
-		// Use specified type
-		logger.Verbose(fmt.Sprintf("Using configured project type: %s", cfg.Project.Type))
+		logger.Verbosef("Using configured type: %s", cfg.Project.Type)
 		detectionResult, err = detector.DetectWithHint(abs, cfg.Project.Type)
 		if err != nil {
-			logger.Warning(fmt.Sprintf("Failed to detect as %s: %v", cfg.Project.Type, err))
-			logger.Info("Falling back to auto-detection...")
+			logger.Warning("Could not verify type, using auto-detection")
 			detectionResult, err = detector.Detect(abs)
 			if err != nil {
-				return fmt.Errorf("project detection failed: %w", err)
+				return fmt.Errorf("detection failed: %w", err)
 			}
 		}
 	} else {
-		// Auto-detect
-		logger.Verbose("Auto-detecting project type...")
 		detectionResult, err = detector.Detect(abs)
 		if err != nil {
-			return fmt.Errorf("project detection failed: %w", err)
+			return fmt.Errorf("detection failed: %w", err)
 		}
 	}
 
 	cfg.Project.Type = detectionResult.Type.Primary
-	logger.Verbose(fmt.Sprintf("Running %d rules...", len(cfg.Rules)))
+	logger.Verbosef("Detected: %s", detectionResult.Type.Primary)
 
-	engine := rules.NewEngine(cfg,detectionResult)
-	execResult,err :=engine.Execute()
-	if err !=nil{
-		return fmt.Errorf("rule execution failed: %w",err)
+	// Run validation
+	logger.Verbose("Running validation...")
+	engine := rules.NewEngine(cfg, detectionResult)
+	execResult, err := engine.Execute()
+	if err != nil {
+		return fmt.Errorf("validation failed: %w", err)
 	}
 
+	logger.Verbosef("Checked %d rules", execResult.Summary.Total)
+
+	// Generate report
 	rep := reporter.New(f.Check.OutputFormat, execResult)
 	if err := rep.Report(); err != nil {
-		return fmt.Errorf("failed to generate report: %w", err)
+		return fmt.Errorf("report failed: %w", err)
 	}
 
+	// Determine exit code
 	return determineExitCode(execResult, f.Check.FailOn)
 }
 
 func determineExitCode(result *rules.ExecutionResult, failOn string) error {
 	f := flags.GetFlags()
 
+	hasErrors := result.Summary.Errors > 0
+	hasWarnings := result.Summary.Warnings > 0
+
+	shouldFail := false
+
 	switch failOn {
 	case "error":
-		if result.Summary.Errors > 0 {
-			// Exit with code 1 but don't show usage
-			if !f.GlobalFlags.Quiet {
-				fmt.Println() // Empty line before final message
-				logger.Error(fmt.Sprintf("Validation failed: %d error(s) found", result.Summary.Errors))
-			}
-			os.Exit(1)
-		}
+		shouldFail = hasErrors
 	case "warning":
-		if result.Summary.Errors > 0 || result.Summary.Warnings > 0 {
-			if !f.GlobalFlags.Quiet {
-				fmt.Println()
-				logger.Error(fmt.Sprintf("Validation failed: %d error(s), %d warning(s) found",
-					result.Summary.Errors, result.Summary.Warnings))
-			}
-			os.Exit(1)
-		}
+		shouldFail = hasErrors || hasWarnings
 	}
 
-	// Success
-	if !f.GlobalFlags.Quiet {
-		fmt.Println()
-		logger.Success("Validation passed! ✓")
+	if shouldFail {
+		if !f.GlobalFlags.Quiet {
+			fmt.Println()
+			logger.Info("Run 'psx fix' to fix issues automatically")
+		}
+		os.Exit(1)
 	}
+
 	return nil
 }
+

@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/fatih/color"
+
+	"github.com/m-mdy-m/psx/internal/checker"
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/checker"
 )
 
 type Reporter struct {
@@ -39,103 +39,66 @@ func (r *Reporter) Report() error {
 func (r *Reporter) reportTable() error {
 	f := flags.GetFlags()
 
+	// Group by severity
 	errors := []checker.RuleResult{}
 	warnings := []checker.RuleResult{}
 	infos := []checker.RuleResult{}
-	passed := []checker.RuleResult{}
 
 	for _, result := range r.result.Results {
 		if result.Passed {
-			passed = append(passed, result)
-		} else {
-			switch result.Severity {
-			case config.SeverityError:
-				errors = append(errors, result)
-			case config.SeverityWarning:
-				warnings = append(warnings, result)
-			case config.SeverityInfo:
-				infos = append(infos, result)
-			}
+			continue
+		}
+		switch result.Severity {
+		case config.SeverityError:
+			errors = append(errors, result)
+		case config.SeverityWarning:
+			warnings = append(warnings, result)
+		case config.SeverityInfo:
+			infos = append(infos, result)
 		}
 	}
 
+	// Sort
 	sort.Slice(errors, func(i, j int) bool { return errors[i].RuleID < errors[j].RuleID })
 	sort.Slice(warnings, func(i, j int) bool { return warnings[i].RuleID < warnings[j].RuleID })
 	sort.Slice(infos, func(i, j int) bool { return infos[i].RuleID < infos[j].RuleID })
 
-	// Print header
-	fmt.Println()
-	printSeparator("═")
-	fmt.Println("PSX - Validation Results")
-	printSeparator("═")
-	fmt.Println()
+	// Print results
+	if !f.GlobalFlags.Quiet {
+		fmt.Println()
 
-	// Print errors
+		// Verbose header
+		if f.GlobalFlags.Verbose {
+			fmt.Printf("Project: %s (%s)\n", r.result.Context.ProjectPath, r.result.Context.ProjectType)
+			fmt.Printf("Rules: %d checked\n", r.result.Summary.Total)
+			fmt.Println()
+		}
+	}
+
+	// Errors
 	if len(errors) > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Red("ERRORS (%d)", len(errors))
-		} else {
-			fmt.Printf("ERRORS (%d)\n", len(errors))
-		}
-		printSeparator("─")
-		for _, result := range errors {
-			printResult(result, "error")
-		}
-		fmt.Println()
+		printSection("ERRORS", errors, "red")
 	}
 
-	// Print warnings
+	// Warnings
 	if len(warnings) > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Yellow("WARNINGS (%d)", len(warnings))
-		} else {
-			fmt.Printf("WARNINGS (%d)\n", len(warnings))
-		}
-		printSeparator("─")
-		for _, result := range warnings {
-			printResult(result, "warning")
-		}
-		fmt.Println()
+		printSection("WARNINGS", warnings, "yellow")
 	}
 
-	// Print info (only in verbose mode)
-	if f.GlobalFlags.Verbose && len(infos) > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Cyan("INFO (%d)", len(infos))
-		} else {
-			fmt.Printf("INFO (%d)\n", len(infos))
-		}
-		printSeparator("─")
-		for _, result := range infos {
-			printResult(result, "info")
-		}
-		fmt.Println()
+	// Info (only verbose)
+	if len(infos) > 0 && f.GlobalFlags.Verbose {
+		printSection("INFO", infos, "cyan")
 	}
 
-	// Print passed (only in verbose mode)
-	if f.GlobalFlags.Verbose && len(passed) > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Green("PASSED (%d)", len(passed))
-		} else {
-			fmt.Printf("PASSED (%d)\n", len(passed))
-		}
-		printSeparator("─")
-		for _, result := range passed {
-			printResult(result, "passed")
-		}
+	// Summary
+	if !f.GlobalFlags.Quiet {
 		fmt.Println()
+		printSummary(r.result)
 	}
-
-	// Print summary
-	printSeparator("═")
-	printSummary(r.result)
-	printSeparator("═")
-	fmt.Println()
 
 	return nil
 }
 
-// reportJSON outputs results in JSON format
 func (r *Reporter) reportJSON() error {
 	output := map[string]any{
 		"status":  r.result.Status,
@@ -156,111 +119,107 @@ func (r *Reporter) reportJSON() error {
 	return nil
 }
 
-// Helper functions
-
-func printSeparator(char string) {
-	fmt.Println(strings.Repeat(char, 60))
-}
-
-func printResult(result checker.RuleResult, severity string) {
+func printSection(title string, results []checker.RuleResult, colorName string) {
 	f := flags.GetFlags()
 
-	// Print icon and rule ID
-	icon := getIcon(severity, f.GlobalFlags.NoColor)
-	fmt.Printf("%s %s\n", icon, strings.ToUpper(result.RuleID))
-
-	// Print message
-	fmt.Printf("  Message: %s\n", result.Message)
-
-	// Print fix hint if available
-	if result.FixHint != "" {
-		fmt.Printf("  Fix: %s\n", result.FixHint)
+	// Header
+	if !f.GlobalFlags.NoColor {
+		switch colorName {
+		case "red":
+			color.Red("%s (%d)", title, len(results))
+		case "yellow":
+			color.Yellow("%s (%d)", title, len(results))
+		case "cyan":
+			color.Cyan("%s (%d)", title, len(results))
+		}
+	} else {
+		fmt.Printf("%s (%d)\n", title, len(results))
 	}
 
+	// Results
+	for _, result := range results {
+		icon := getIcon(colorName)
+		fmt.Printf("  %s %s\n", icon, result.RuleID)
+
+		if f.GlobalFlags.Verbose {
+			fmt.Printf("      %s\n", result.Message)
+			if result.FixHint != "" {
+				fmt.Printf("      Fix: %s\n", result.FixHint)
+			}
+		}
+	}
 	fmt.Println()
 }
 
 func printSummary(result *rules.ExecutionResult) {
 	f := flags.GetFlags()
 
-	fmt.Printf("Total Rules: %d\n", result.Summary.Total)
-	fmt.Printf("Passed: %d\n", result.Summary.Passed)
+	total := result.Summary.Total
+	passed := result.Summary.Passed
+	errors := result.Summary.Errors
+	warnings := result.Summary.Warnings
 
-	if result.Summary.Errors > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Red("Errors: %d", result.Summary.Errors)
-		} else {
-			fmt.Printf("Errors: %d\n", result.Summary.Errors)
+	if f.GlobalFlags.Verbose {
+		fmt.Printf("Results: %d passed, %d errors, %d warnings (total: %d)\n",
+			passed, errors, warnings, total)
+	} else {
+		if errors > 0 {
+			fmt.Printf("%d errors, %d warnings\n", errors, warnings)
+		} else if warnings > 0 {
+			fmt.Printf("%d warnings\n", warnings)
 		}
 	}
 
-	if result.Summary.Warnings > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Yellow("Warnings: %d", result.Summary.Warnings)
-		} else {
-			fmt.Printf("Warnings: %d\n", result.Summary.Warnings)
-		}
-	}
-
-	if result.Summary.Info > 0 {
-		if !f.GlobalFlags.NoColor {
-			color.Cyan("Info: %d", result.Summary.Info)
-		} else {
-			fmt.Printf("Info: %d\n", result.Summary.Info)
-		}
-	}
-
-	fmt.Println()
-
-	// Print status
+	// Status
+	fmt.Print("Status: ")
 	switch result.Status {
 	case checker.StatusPassed:
 		if !f.GlobalFlags.NoColor {
-			color.Green("Status: PASSED ✓")
+			color.Green("PASSED")
 		} else {
-			fmt.Println("Status: PASSED")
+			fmt.Println("PASSED")
 		}
 	case checker.StatusWarnings:
 		if !f.GlobalFlags.NoColor {
-			color.Yellow("Status: PASSED WITH WARNINGS ⚠")
+			color.Yellow("PASSED (with warnings)")
 		} else {
-			fmt.Println("Status: PASSED WITH WARNINGS")
+			fmt.Println("PASSED (with warnings)")
 		}
 	case checker.StatusFailed:
 		if !f.GlobalFlags.NoColor {
-			color.Red("Status: FAILED ✗")
+			color.Red("FAILED")
 		} else {
-			fmt.Println("Status: FAILED")
+			fmt.Println("FAILED")
 		}
 	}
 }
 
-func getIcon(severity string, noColor bool) string {
-	if noColor {
-		switch severity {
-		case "error":
-			return "✗"
-		case "warning":
-			return "⚠"
-		case "info":
-			return "ℹ"
-		case "passed":
-			return "✓"
-		default:
-			return "•"
-		}
+func getIcon(colorName string) string {
+	f := flags.GetFlags()
+
+	icons := map[string]string{
+		"red":    "✗",
+		"yellow": "⚠",
+		"cyan":   "ℹ",
+		"green":  "✓",
 	}
 
-	switch severity {
-	case "error":
-		return color.RedString("✗")
-	case "warning":
-		return color.YellowString("⚠")
-	case "info":
-		return color.CyanString("ℹ")
-	case "passed":
-		return color.GreenString("✓")
+	icon := icons[colorName]
+	if f.GlobalFlags.NoColor {
+		return icon
+	}
+
+	switch colorName {
+	case "red":
+		return color.RedString(icon)
+	case "yellow":
+		return color.YellowString(icon)
+	case "cyan":
+		return color.CyanString(icon)
+	case "green":
+		return color.GreenString(icon)
 	default:
-		return "•"
+		return icon
 	}
 }
+
