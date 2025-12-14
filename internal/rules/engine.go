@@ -6,22 +6,21 @@ import (
 
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/detector"
-	"github.com/m-mdy-m/psx/internal/shared/logger"
+	"github.com/m-mdy-m/psx/internal/checker"
+	"github.com/m-mdy-m/psx/internal/logger"
 )
 
-// Engine executes rules against a project
 type Engine struct {
 	config    *config.Config
 	detection *detector.DetectionResult
-	context   *Context
+	context   *checker.Context
 }
 
-// NewEngine creates a new rule engine
 func NewEngine(cfg *config.Config, detection *detector.DetectionResult) *Engine {
 	return &Engine{
 		config:    cfg,
 		detection: detection,
-		context: &Context{
+		context: &checker.Context{
 			ProjectPath: cfg.Path,
 			ProjectType: detection.Type.Primary,
 			Detection:   detection,
@@ -29,17 +28,15 @@ func NewEngine(cfg *config.Config, detection *detector.DetectionResult) *Engine 
 	}
 }
 
-// Execute runs all enabled rules
 func (e *Engine) Execute() (*ExecutionResult, error) {
 	result := &ExecutionResult{
-		Results:  make([]RuleResult, 0, len(e.config.ActiveRules)),
-		Summary:  Summary{},
+		Results:  make([]checker.RuleResult, 0, len(e.config.ActiveRules)),
+		Summary:  checker.Summary{},
 		Context:  e.context,
 	}
 
-	// Execute rules in parallel
 	var wg sync.WaitGroup
-	resultsChan := make(chan RuleResult, len(e.config.ActiveRules))
+	resultsChan := make(chan checker.RuleResult, len(e.config.ActiveRules))
 
 	for _, activeRule := range e.config.ActiveRules {
 		wg.Add(1)
@@ -48,14 +45,12 @@ func (e *Engine) Execute() (*ExecutionResult, error) {
 
 			logger.Verbose(fmt.Sprintf("  Checking rule: %s", ar.ID))
 
-			// Get the rule executor
 			executor, err := GetExecutor(ar.ID)
 			if err != nil {
 				logger.Warning(fmt.Sprintf("  Rule %s: no executor found, skipping", ar.ID))
 				return
 			}
 
-			// Execute the rule
 			ruleResult := executor.Execute(e.context, &ar.Metadata)
 			ruleResult.RuleID = ar.ID
 			ruleResult.Severity = ar.Severity
@@ -91,11 +86,11 @@ func (e *Engine) Execute() (*ExecutionResult, error) {
 
 	// Determine overall status
 	result.Summary.Total = len(result.Results)
-	result.Status = StatusPassed
+	result.Status = checker.StatusPassed
 	if result.Summary.Errors > 0 {
-		result.Status = StatusFailed
+		result.Status = checker.StatusFailed
 	} else if result.Summary.Warnings > 0 {
-		result.Status = StatusWarnings
+		result.Status = checker.StatusWarnings
 	}
 
 	return result, nil

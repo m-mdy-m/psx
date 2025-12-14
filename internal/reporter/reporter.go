@@ -10,15 +10,14 @@ import (
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/rules"
+	"github.com/m-mdy-m/psx/internal/checker"
 )
 
-// Reporter formats and displays execution results
 type Reporter struct {
 	format string
 	result *rules.ExecutionResult
 }
 
-// New creates a new reporter
 func New(format string, result *rules.ExecutionResult) *Reporter {
 	return &Reporter{
 		format: format,
@@ -26,7 +25,6 @@ func New(format string, result *rules.ExecutionResult) *Reporter {
 	}
 }
 
-// Report outputs the results in the specified format
 func (r *Reporter) Report() error {
 	switch r.format {
 	case "table":
@@ -38,15 +36,13 @@ func (r *Reporter) Report() error {
 	}
 }
 
-// reportTable outputs results in table format
 func (r *Reporter) reportTable() error {
 	f := flags.GetFlags()
 
-	// Group results by severity
-	errors := []rules.RuleResult{}
-	warnings := []rules.RuleResult{}
-	infos := []rules.RuleResult{}
-	passed := []rules.RuleResult{}
+	errors := []checker.RuleResult{}
+	warnings := []checker.RuleResult{}
+	infos := []checker.RuleResult{}
+	passed := []checker.RuleResult{}
 
 	for _, result := range r.result.Results {
 		if result.Passed {
@@ -63,7 +59,6 @@ func (r *Reporter) reportTable() error {
 		}
 	}
 
-	// Sort by rule ID for consistency
 	sort.Slice(errors, func(i, j int) bool { return errors[i].RuleID < errors[j].RuleID })
 	sort.Slice(warnings, func(i, j int) bool { return warnings[i].RuleID < warnings[j].RuleID })
 	sort.Slice(infos, func(i, j int) bool { return infos[i].RuleID < infos[j].RuleID })
@@ -142,11 +137,11 @@ func (r *Reporter) reportTable() error {
 
 // reportJSON outputs results in JSON format
 func (r *Reporter) reportJSON() error {
-	output := map[string]interface{}{
+	output := map[string]any{
 		"status":  r.result.Status,
 		"summary": r.result.Summary,
 		"results": r.result.Results,
-		"context": map[string]interface{}{
+		"context": map[string]any{
 			"project_path": r.result.Context.ProjectPath,
 			"project_type": r.result.Context.ProjectType,
 		},
@@ -167,7 +162,7 @@ func printSeparator(char string) {
 	fmt.Println(strings.Repeat(char, 60))
 }
 
-func printResult(result rules.RuleResult, severity string) {
+func printResult(result checker.RuleResult, severity string) {
 	f := flags.GetFlags()
 
 	// Print icon and rule ID
@@ -177,19 +172,9 @@ func printResult(result rules.RuleResult, severity string) {
 	// Print message
 	fmt.Printf("  Message: %s\n", result.Message)
 
-	// Print location if available
-	if result.Location != "" {
-		fmt.Printf("  Location: %s\n", result.Location)
-	}
-
 	// Print fix hint if available
 	if result.FixHint != "" {
 		fmt.Printf("  Fix: %s\n", result.FixHint)
-	}
-
-	// Print details in verbose mode
-	if f.GlobalFlags.Verbose && len(result.Details) > 0 {
-		fmt.Printf("  Details: %v\n", result.Details)
 	}
 
 	fmt.Println()
@@ -229,19 +214,19 @@ func printSummary(result *rules.ExecutionResult) {
 
 	// Print status
 	switch result.Status {
-	case rules.StatusPassed:
+	case checker.StatusPassed:
 		if !f.GlobalFlags.NoColor {
 			color.Green("Status: PASSED ✓")
 		} else {
 			fmt.Println("Status: PASSED")
 		}
-	case rules.StatusWarnings:
+	case checker.StatusWarnings:
 		if !f.GlobalFlags.NoColor {
 			color.Yellow("Status: PASSED WITH WARNINGS ⚠")
 		} else {
 			fmt.Println("Status: PASSED WITH WARNINGS")
 		}
-	case rules.StatusFailed:
+	case checker.StatusFailed:
 		if !f.GlobalFlags.NoColor {
 			color.Red("Status: FAILED ✗")
 		} else {

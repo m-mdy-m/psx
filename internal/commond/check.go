@@ -12,7 +12,7 @@ import (
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/reporter"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/shared/logger"
+	"github.com/m-mdy-m/psx/internal/logger"
 )
 
 var CheckCmd = &cobra.Command{
@@ -91,10 +91,6 @@ func runCommand(cmd *cobra.Command, args []string) error{
 	}
 
 	cfg.Project.Type = detectionResult.Type.Primary
-
-	if !f.GlobalFlags.Quiet{
-		displayProjectInfo(detectionResult)
-	}
 	logger.Verbose(fmt.Sprintf("Running %d rules...", len(cfg.Rules)))
 
 	engine := rules.NewEngine(cfg,detectionResult)
@@ -110,31 +106,6 @@ func runCommand(cmd *cobra.Command, args []string) error{
 
 	return determineExitCode(execResult, f.Check.FailOn)
 }
-
-func displayProjectInfo(result *detector.DetectionResult) {
-	fmt.Println("\nProject Information:")
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("Type: %s\n", result.Description)
-
-	if result.Type.Framework != "" {
-		fmt.Printf("Framework: %s\n", result.Type.Framework)
-	}
-
-	if result.Type.PackageManager != "" {
-		fmt.Printf("Package Manager: %s\n", result.Type.PackageManager)
-	}
-
-	fmt.Printf("Structure: %s\n", result.Type.Structure)
-	fmt.Printf("Confidence: %.0f%%\n", result.Type.Confidence*100)
-
-	if len(result.Type.Secondary) > 0 {
-		fmt.Printf("Also detected: %v\n", result.Type.Secondary)
-	}
-
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
-}
-
 
 func determineExitCode(result *rules.ExecutionResult, failOn string) error {
 	f := flags.GetFlags()
