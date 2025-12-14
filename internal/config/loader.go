@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"github.com/goccy/go-yaml"
-	"github.com/m-mdy-m/psx/internal/shared/logger"
+	"github.com/m-mdy-m/psx/internal/logger"
 )
 //go:embed embedded/*.yml
 var configFS embed.FS
