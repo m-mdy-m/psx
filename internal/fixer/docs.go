@@ -45,7 +45,7 @@ func FixADR(ctx *FixContext) (*FixResult, error) {
 
 	// Create first ADR
 	firstADR := filepath.Join(adrPath, "0001-record-architecture-decisions.md")
-	content := resources.GetFirstADR()
+	content := resources.GetFirstADR(ctx.ProjectInfo)
 	if err := shared.CreateFile(firstADR, content); err != nil {
 		result.Error = err
 		return result, err
@@ -153,7 +153,7 @@ func FixAPIDocsFolder(ctx *FixContext) (*FixResult, error) {
 
 	// Create API docs README
 	readmePath := filepath.Join(apiDocsPath, "README.md")
-	content := resources.GetAPIDocs(ctx.ProjectType)
+	content := resources.GetAPIDocs(ctx.ProjectInfo, ctx.ProjectType)
 	shared.CreateFile(readmePath, content)
 
 	result.Fixed = true

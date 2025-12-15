@@ -22,8 +22,8 @@ func FixReadme(ctx *FixContext) (*FixResult, error) {
 		return result, nil
 	}
 
-	projectName := resources.GetProjectName(ctx.ProjectPath)
-	content := resources.GetReadme(projectName, ctx.ProjectType)
+	// Use ProjectInfo to generate README
+	content := resources.GetReadme(ctx.ProjectInfo, ctx.ProjectType)
 
 	if ctx.DryRun {
 		result.Changes = append(result.Changes, Change{
@@ -72,8 +72,12 @@ func FixLicense(ctx *FixContext) (*FixResult, error) {
 		return result, nil
 	}
 
-	licenseType := "MIT"
-	if ctx.Config.Fix.Interactive || ctx.Interactive {
+	licenseType := ctx.ProjectInfo.License
+	if licenseType == "" {
+		licenseType = "MIT"
+	}
+
+	if ctx.Interactive {
 		licenses := resources.ListLicenses()
 		licenses = append(licenses, "Skip")
 		choice, _ := shared.PromptChoice("Choose license type:", licenses)
@@ -84,9 +88,7 @@ func FixLicense(ctx *FixContext) (*FixResult, error) {
 		licenseType = choice
 	}
 
-	// Get user name
-	fullname := shared.PromptInput("Your full name", "")
-	content := resources.GetLicense(licenseType, fullname)
+	content := resources.GetLicense(licenseType, ctx.ProjectInfo.Author)
 
 	if ctx.DryRun {
 		result.Changes = append(result.Changes, Change{
@@ -179,7 +181,7 @@ func FixChangelog(ctx *FixContext) (*FixResult, error) {
 		return result, nil
 	}
 
-	content := resources.GetChangelog()
+	content := resources.GetChangelog(ctx.ProjectInfo)
 
 	if ctx.DryRun {
 		result.Changes = append(result.Changes, Change{

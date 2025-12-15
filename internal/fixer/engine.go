@@ -24,26 +24,68 @@ func NewEngine(ctx *FixContext) *Engine {
 }
 
 func (e *Engine) registerFixers() {
-	// General
+	// ============================================
+	// General Rules
+	// ============================================
 	e.fixes["readme"] = FixReadme
 	e.fixes["license"] = FixLicense
 	e.fixes["gitignore"] = FixGitignore
 	e.fixes["changelog"] = FixChangelog
 
-	// Structure
+	// ============================================
+	// Structure Rules
+	// ============================================
 	e.fixes["src_folder"] = FixSrcFolder
 	e.fixes["tests_folder"] = FixTestsFolder
 	e.fixes["docs_folder"] = FixDocsFolder
+	//e.fixes["scripts_folder"] = FixScriptsFolder
+	//e.fixes["env_example"] = FixEnvExample
 
-	// Documentation
+	// ============================================
+	// Documentation Rules
+	// ============================================
 	e.fixes["adr"] = FixADR
 	e.fixes["contributing"] = FixContributing
 	e.fixes["api_docs"] = FixAPIDocsFolder
+	// e.fixes["security"] = FixSecurity
+	// e.fixes["code_of_conduct"] = FixCodeOfConduct
+	//e.fixes["pull_request_template"] = FixPullRequestTemplate
+	//e.fixes["issue_templates"] = FixIssueTemplates
+	//e.fixes["funding"] = FixFunding
+	//e.fixes["support"] = FixSupport
+	//e.fixes["roadmap"] = FixRoadmap
 
-	// Quality
+	// ============================================
+	// Quality Rules
+	// ============================================
 	e.fixes["editorconfig"] = FixEditorconfig
 	e.fixes["pre_commit"] = FixPreCommit
 	e.fixes["code_owners"] = FixCodeOwners
+	e.fixes["prettier"] = FixPrettier
+	e.fixes["prettierignore"] = FixPrettierIgnore
+	e.fixes["eslint"] = FixESLint
+	e.fixes["commitlint"] = FixCommitlint
+	e.fixes["husky"] = FixHusky
+	e.fixes["lint_staged"] = FixLintStaged
+	e.fixes["makefile"] = FixMakefile
+	e.fixes["gitattributes"] = FixGitattributes
+
+	// ============================================
+	// DevOps Rules
+	// ============================================
+	e.fixes["dockerfile"] = FixDockerfile
+	e.fixes["dockerignore"] = FixDockerIgnore
+	e.fixes["docker_compose"] = FixDockerCompose
+	e.fixes["kubernetes"] = FixKubernetes
+	e.fixes["nginx_config"] = FixNginxConfig
+	e.fixes["infra_folder"] = FixInfraFolder
+
+	// ============================================
+	// CI/CD Rules
+	// ============================================
+	//e.fixes["github_actions"] = FixGitHubActions
+	//e.fixes["renovate"] = FixRenovate
+	//e.fixes["dependabot"] = FixDependabot
 }
 
 func (e *Engine) CanFix(ruleID string) bool {

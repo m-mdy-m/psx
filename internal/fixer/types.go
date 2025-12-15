@@ -2,17 +2,18 @@ package fixer
 
 import (
 	"github.com/m-mdy-m/psx/internal/config"
+	"github.com/m-mdy-m/psx/internal/resources"
 )
 
 type FixResult struct {
-	RuleID    string
-	Fixed     bool
-	Skipped   bool
-	Error     error
-	Changes   []Change
+	RuleID  string
+	Fixed   bool
+	Skipped bool
+	Error   error
+	Changes []Change
 }
 
-// Changerepresents a single file/folder change
+// Change represents a single file/folder change
 type Change struct {
 	Type        ChangeType
 	Path        string
@@ -32,12 +33,13 @@ const (
 
 // FixContext contains context for fix operations
 type FixContext struct {
-	ProjectPath string
-	ProjectType string
-	Config      *config.Config
-	Interactive bool
-	DryRun      bool
+	ProjectPath   string
+	ProjectType   string
+	Config        *config.Config
+	Interactive   bool
+	DryRun        bool
 	CreateBackups bool
+	ProjectInfo   *resources.ProjectInfo // اضافه شده
 }
 
 // Fixer defines the interface for fix operations
@@ -48,16 +50,15 @@ type Fixer interface {
 
 // FixPlan represents a plan of fixes to apply
 type FixPlan struct {
-	Fixes       []*FixResult
+	Fixes        []*FixResult
 	TotalChanges int
 }
 
 // FixSummary summarizes fix results
 type FixSummary struct {
-	Total    int
-	Fixed    int
-	Skipped  int
-	Failed   int
-	Changes  int
+	Total   int
+	Fixed   int
+	Skipped int
+	Failed  int
+	Changes int
 }
-
