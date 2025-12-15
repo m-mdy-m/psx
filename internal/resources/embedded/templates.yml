@@ -1,0 +1,326 @@
+# File templates
+# Variables: {{project_name}}, {{project_type}}, {{year}}, {{date}}, {{fullname}}
+
+readme:
+  generic: |
+    # {{project_name}}
+
+    Short description of the project
+
+    ## Installation
+
+    ```bash
+    # Add installation instructions
+    ```
+
+    ## Usage
+
+    ```bash
+    # Add usage examples
+    ```
+
+    ## Contributing
+
+    Contributions welcome! Please read CONTRIBUTING.md first.
+
+    ## License
+
+    See LICENSE file for details.
+
+  nodejs: |
+    # {{project_name}}
+
+    A Node.js project
+
+    ## Installation
+
+    ```bash
+    npm install
+    # or
+    yarn install
+    # or
+    pnpm install
+    ```
+
+    ## Usage
+
+    ```javascript
+    const app = require('./src');
+    ```
+
+    ## Development
+
+    ```bash
+    npm run dev
+    npm test
+    ```
+
+    ## License
+
+    See LICENSE file.
+
+  go: |
+    # {{project_name}}
+
+    A Go project
+
+    ## Installation
+
+    ```bash
+    go get github.com/user/{{project_name}}
+    ```
+
+    ## Usage
+
+    ```go
+    import "github.com/user/{{project_name}}"
+    ```
+
+    ## Development
+
+    ```bash
+    go run ./cmd/{{project_name}}
+    go test ./...
+    ```
+
+    ## License
+
+    See LICENSE file.
+
+changelog: |
+  # Changelog
+
+  All notable changes to this project will be documented in this file.
+
+  The format is based on [Keep a Changelog](https://keepachangelog.com/),
+  and this project adheres to [Semantic Versioning](https://semver.org/).
+
+  ## [Unreleased]
+
+  ## [0.1.0] - {{date}}
+
+  ### Added
+  - Initial release
+
+  [Unreleased]: https://github.com/user/repo/compare/v0.1.0...HEAD
+  [0.1.0]: https://github.com/user/repo/releases/tag/v0.1.0
+
+contributing: |
+  # Contributing
+
+  Thanks for your interest in contributing!
+
+  ## How to Contribute
+
+  ### Reporting Bugs
+
+  - Check if already reported
+  - Create detailed issue with:
+    - Steps to reproduce
+    - Expected vs actual behavior
+    - Environment details
+
+  ### Suggesting Features
+
+  - Open issue with enhancement label
+  - Describe feature and use case
+  - Explain why it's useful
+
+  ### Code Contributions
+
+  1. Fork the repo
+  2. Create feature branch (`git checkout -b feature/amazing`)
+  3. Make changes
+  4. Run tests
+  5. Commit (`git commit -m 'Add amazing feature'`)
+  6. Push (`git push origin feature/amazing`)
+  7. Open Pull Request
+
+  ## Code Style
+
+  - Follow existing style
+  - Write clear commit messages
+  - Add tests for new features
+  - Update docs as needed
+
+  ## Questions?
+
+  Open an issue or reach out to maintainers.
+
+adr:
+  first: |
+    # 1. Record architecture decisions
+
+    Date: {{date}}
+
+    ## Status
+
+    Accepted
+
+    ## Context
+
+    We need to record architectural decisions made on this project.
+
+    ## Decision
+
+    We will use Architecture Decision Records, as described by Michael Nygard.
+
+    ## Consequences
+
+    See Michael Nygard's article for details.
+
+  template: |
+    # [number]. [title]
+
+    Date: [YYYY-MM-DD]
+
+    ## Status
+
+    [Proposed | Accepted | Deprecated | Superseded]
+
+    ## Context
+
+    What issue is motivating this decision?
+
+    ## Decision
+
+    What change are we proposing?
+
+    ## Consequences
+
+    What becomes easier or harder because of this?
+
+api_docs:
+  nodejs: |
+    # API Documentation
+
+    ## Overview
+
+    Document your public API here.
+
+    ## Modules
+
+    ### ModuleName
+
+    ```javascript
+    const module = require('./module');
+    ```
+
+    ## Functions
+
+    ### functionName(param1, param2)
+
+    Description of the function.
+
+    **Parameters:**
+    - param1 (Type): Description
+    - param2 (Type): Description
+
+    **Returns:** Return type
+
+    **Example:**
+    ```javascript
+    const result = functionName('value', 123);
+    ```
+
+  go: |
+    # API Documentation
+
+    ## Overview
+
+    Document your public API here.
+
+    ## Packages
+
+    ### package name
+
+    ```go
+    import "github.com/user/project/package"
+    ```
+
+    ## Functions
+
+    ### FunctionName(param1, param2 string) error
+
+    Description.
+
+    **Parameters:**
+    - param1 (string): Description
+    - param2 (string): Description
+
+    **Returns:** error
+
+    **Example:**
+    ```go
+    err := FunctionName("value", "other")
+    if err != nil {
+        log.Fatal(err)
+    }
+    ```
+
+  generic: |
+    # API Documentation
+
+    Document your public API here.
+
+    ## Usage
+
+    Add examples and API descriptions.
+
+test_examples:
+  nodejs: |
+    // Example test
+    describe('Example', () => {
+      it('should pass', () => {
+        expect(true).toBe(true);
+      });
+    });
+
+  go: |
+    package tests
+
+    import "testing"
+
+    func TestExample(t *testing.T) {
+        if true != true {
+            t.Error("Should not fail")
+        }
+    }
+
+  python: |
+    """Example test"""
+
+    def test_example():
+        """Example test"""
+        assert True
+
+  rust: |
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn test_example() {
+            assert_eq!(2 + 2, 4);
+        }
+    }
+
+editorconfig: |
+  root = true
+
+  [*]
+  charset = utf-8
+  end_of_line = lf
+  insert_final_newline = true
+  trim_trailing_whitespace = true
+  indent_size = 2
+  indent_style = space
+
+  [*.{go}]
+  indent_style = tab
+  indent_size = 4
+
+  [*.{md}]
+  trim_trailing_whitespace = false
+
+  [{Makefile,*.mk}]
+  indent_style = tab
+  indent_size = 4

@@ -1,8 +1,0 @@
-nodejs:
-  signatures:
-      - file: "package.json"
-  lock_files:
-      npm: "package-lock.json"
-      pnpm: "pnpm-lock.yaml"
-      bun: "bun.lockb"
-      yarn: "yarn.lock"

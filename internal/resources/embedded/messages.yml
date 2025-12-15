@@ -1,0 +1,70 @@
+# User-facing messages
+
+exit:
+  success: "Success"
+  failed: "Validation failed"
+  config: "Configuration error"
+  fs: "File system error"
+  args: "Invalid arguments"
+
+errors:
+  config_not_found: "Configuration not found. Run 'psx init' to create one"
+  invalid_config: "Invalid configuration. Run 'psx config validate' to check"
+  no_project: "Not in a project directory"
+  permission_denied: "Permission denied"
+  unknown_rule: "Unknown rule. Run 'psx rules' to list available rules"
+  fix_failed: "Fix operation failed"
+  detection_failed: "Could not detect project type"
+
+help:
+  main: |
+    PSX - Project Structure Checker
+
+    Usage: psx [command] [flags]
+
+    Commands:
+      check       Validate project structure
+      fix         Fix structural issues
+      init        Create configuration file
+      rules       List validation rules
+      config      Manage configuration
+      version     Show version
+
+    Flags:
+      -v, --verbose       Show detailed output
+      -q, --quiet         Minimal output
+          --config PATH   Config file path
+          --no-color      Disable colors
+      -h, --help          Show help
+
+    Examples:
+      psx check
+      psx fix --interactive
+      psx init --template nodejs
+
+    Documentation: https://github.com/m-mdy-m/psx
+
+check:
+  success_all: "All %d checks passed"
+  success_partial: "%d of %d checks passed"
+  start: "Checking project: %s"
+  rule_check: "Checking: %s"
+
+fix:
+  success_none: "No fixes needed"
+  success_one: "Fixed 1 issue"
+  success_many: "Fixed %d issues"
+  prompt_none: "No issues to fix"
+  prompt_one: "Found 1 fixable issue. Fix it?"
+  prompt_many: "Found %d fixable issues. Fix them?"
+  dry_run: "Dry run - no changes will be made"
+  interactive: "Interactive mode - confirm each fix"
+  applied: "Applied fix: %s"
+
+init:
+  success: "Created configuration: %s"
+
+verbose:
+  detected: "Detected: %s"
+  rules_loaded: "Loaded %d rules"
+  config_loaded: "Config loaded: %s"
