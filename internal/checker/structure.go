@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/m-mdy-m/psx/internal/config"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/shared"
 )
 
@@ -14,9 +15,9 @@ func CheckSrcFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult 
 	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
 
 	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
 	}
 
 	for _, pattern := range patterns {
@@ -43,7 +44,6 @@ func CheckSrcFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult 
 		}
 	}
 
-	// No source folder found
 	result.Passed = false
 	return result
 }
@@ -52,9 +52,9 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
 
 	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
 	}
 
 	for _, pattern := range patterns {
@@ -63,19 +63,23 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 			fullPath := filepath.Join(ctx.ProjectPath, folderName)
 			exists, info := shared.FileExists(fullPath)
 			if !exists || info == nil || !info.IsDir() {
-				// try next pattern
 				continue
 			}
+
+			// For Go, check inline tests
 			if ctx.ProjectType == "go" {
-				hasGoTests, _ := hasMatchingFiles(ctx.ProjectPath, "_test.go")
-				if hasGoTests {
-					result.Passed = true
-					result.Message = "Test files found (Go tests are inline)"
-					return result
+				testPatterns := resources.GetTestPatterns(ctx.ProjectType)
+				for _, testPattern := range testPatterns {
+					hasTests, _ := hasMatchingFiles(ctx.ProjectPath, testPattern)
+					if hasTests {
+						result.Passed = true
+						result.Message = "Test files found (Go tests are inline)"
+						return result
+					}
 				}
 			}
 
-			// If folder exists, check if it's empty first
+			// Check if folder is empty
 			empty, err := shared.IsDirEmpty(fullPath)
 			if err != nil {
 				result.Passed = false
@@ -88,7 +92,7 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 				return result
 			}
 
-			// Folder not empty — check for test files inside
+			// Check for actual test files
 			hasTests, err := hasTestFiles(fullPath, ctx.ProjectType)
 			if err != nil {
 				result.Passed = false
@@ -101,12 +105,12 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 				return result
 			}
 
-			// Tests found in folder
 			result.Passed = true
 			result.Message = "Tests folder found with test files"
 			return result
 		}
-		// wildcard pattern (contains "*"
+
+		// Wildcard pattern
 		if strings.Contains(pattern, "*") {
 			suffix := pattern
 			parts := strings.Split(pattern, "*")
@@ -121,7 +125,6 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 		}
 	}
 
-	// No tests found
 	result.Passed = false
 	return result
 }
@@ -130,14 +133,14 @@ func CheckDocsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult
 	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
 
 	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
 	}
 
 	for _, pattern := range patterns {
 		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,_ := shared.FileExists(fullPath)
+		exists, _ := shared.FileExists(fullPath)
 		if exists {
 			result.Passed = true
 			result.Message = "Documentation folder found"
@@ -148,19 +151,10 @@ func CheckDocsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult
 	result.Passed = false
 	return result
 }
-func hasTestFiles(path string, projectType string) (bool, error) {
-	// Test file patterns by language
-	testPatterns := map[string][]string{
-		"nodejs": {".test.js", ".test.ts", ".spec.js", ".spec.ts"},
-		"go":     {"_test.go"},
-		"python": {"test_", "_test.py"},
-		"rust":   {"test", "tests.rs"},
-	}
 
-	patterns, exists := testPatterns[projectType]
-	if !exists {
-		patterns = []string{"test", "_test", ".test"}
-	}
+func hasTestFiles(path string, projectType string) (bool, error) {
+	// Get test patterns from resources
+	patterns := resources.GetTestPatterns(projectType)
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -189,12 +183,13 @@ func hasMatchingFiles(rootPath string, suffix string) (bool, int) {
 
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Skip errors
+			return nil
 		}
 
 		if info.IsDir() {
 			name := info.Name()
-			if name == ".git" || name == "vendor" || name == "node_modules" || name == "build" || name == "dist" {
+			if name == ".git" || name == "vendor" || name == "node_modules" || 
+			   name == "build" || name == "dist" {
 				return filepath.SkipDir
 			}
 			return nil

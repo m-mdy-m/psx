@@ -39,6 +39,11 @@ func (e *Engine) registerFixers() {
 	e.fixes["adr"] = FixADR
 	e.fixes["contributing"] = FixContributing
 	e.fixes["api_docs"] = FixAPIDocsFolder
+
+	// Quality
+	e.fixes["editorconfig"] = FixEditorconfig
+	e.fixes["pre_commit"] = FixPreCommit
+	e.fixes["code_owners"] = FixCodeOwners
 }
 
 func (e *Engine) CanFix(ruleID string) bool {
@@ -88,7 +93,6 @@ func GetFixableFails(execResult *rules.ExecutionResult, cfg *config.Config) []st
 			continue
 		}
 
-		// Check if active in config
 		if _, ok := cfg.ActiveRules[result.RuleID]; !ok {
 			continue
 		}
@@ -117,4 +121,3 @@ func GenerateSummary(plan *FixPlan) FixSummary {
 
 	return summary
 }
-

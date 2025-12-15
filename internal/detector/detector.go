@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/shared"
 )
 
@@ -14,28 +15,22 @@ var (
 
 func init() {
 	registry = NewDetectorRegistry()
-
 	registry.Register(&GoDetector{})
-
 	logger.Verbose(fmt.Sprintf("Registered %d language detectors", len(registry.GetNames())))
 }
 
 func Detect(projectPath string) (*DetectionResult, error) {
 	logger.Verbose(fmt.Sprintf("Auto-detecting project type in: %s", projectPath))
 
-	// Validate project path
 	if err := validateProjectPath(projectPath); err != nil {
 		return nil, err
 	}
 
-	// Try each detector and collect results
 	var bestResult *DetectionResult
-	var allResults []*DetectionResult
 
 	for _, detector := range registry.All() {
 		sig := detector.GetSignature()
 
-		// Quick check first
 		if !detector.CanDetect(projectPath) {
 			logger.Verbose(fmt.Sprintf("  [%s] Quick check failed", sig.Name))
 			continue
@@ -48,8 +43,6 @@ func Detect(projectPath string) (*DetectionResult, error) {
 			logger.Verbose(fmt.Sprintf("  [%s] Detection failed: %v", sig.Name, err))
 			continue
 		}
-
-		allResults = append(allResults, result)
 
 		if bestResult == nil {
 			bestResult = result
@@ -67,15 +60,13 @@ func Detect(projectPath string) (*DetectionResult, error) {
 func DetectWithHint(projectPath string, hint string) (*DetectionResult, error) {
 	logger.Verbose(fmt.Sprintf("Detecting project type with hint: %s", hint))
 
-	// Validate project path
 	if err := validateProjectPath(projectPath); err != nil {
 		return nil, err
 	}
 
-	// Normalize hint
-	hint = normalizeLanguageName(hint)
+	// Normalize hint using resources
+	hint = resources.NormalizeLanguage(hint)
 
-	// Try to find detector for hint
 	detector, exists := registry.Get(hint)
 	if !exists {
 		logger.Warning(fmt.Sprintf("Unknown language hint '%s', falling back to auto-detect", hint))
@@ -86,14 +77,12 @@ func DetectWithHint(projectPath string, hint string) (*DetectionResult, error) {
 	sig := detector.GetSignature()
 	logger.Verbose(fmt.Sprintf("Using %s detector", sig.Name))
 
-	// Quick check
 	if !detector.CanDetect(projectPath) {
 		logger.Warning(fmt.Sprintf("Project doesn't appear to be %s", sig.Name))
 		logger.Info("Trying auto-detection instead...")
 		return Detect(projectPath)
 	}
 
-	// Attempt detection
 	result, err := detector.Detect(projectPath)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to detect as %s: %v", sig.Name, err))
@@ -103,25 +92,23 @@ func DetectWithHint(projectPath string, hint string) (*DetectionResult, error) {
 	return result, nil
 }
 
-
 func validateProjectPath(path string) error {
-	exists,info := shared.FileExists(path)
+	exists, info := shared.FileExists(path)
 	if !exists {
 		return fmt.Errorf("project path does not exist: %s", path)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("project path is not a directory: %s", path)
 	}
-
 	return nil
 }
 
 func detectGeneric(projectPath string) (*DetectionResult, error) {
 	result := &DetectionResult{
 		Type: ProjectType{
-			Primary:    "generic",
-			},
-		Files:       []string{},
+			Primary: "generic",
+		},
+		Files: []string{},
 	}
 
 	commonFiles := []string{
@@ -132,39 +119,14 @@ func detectGeneric(projectPath string) (*DetectionResult, error) {
 		"Dockerfile",
 	}
 
-	foundCount := 0
 	for _, file := range commonFiles {
-		exists,_ := shared.FileExists(filepath.Join(projectPath,file))
-		if exists{
+		exists, _ := shared.FileExists(filepath.Join(projectPath, file))
+		if exists {
 			result.Files = append(result.Files, file)
-			foundCount++
 		}
 	}
 
 	return result, nil
-}
-
-func normalizeLanguageName(name string) string {
-	aliases := map[string]string{
-		"node":       "nodejs",
-		"javascript": "nodejs",
-		"js":         "nodejs",
-		"typescript": "nodejs",
-		"ts":         "nodejs",
-		"golang":     "go",
-		"rustlang":   "rust",
-		"py":         "python",
-		"python3":    "python",
-		"rb":         "ruby",
-		"php":        "php",
-		"java":       "java",
-	}
-
-	if standard, exists := aliases[name]; exists {
-		return standard
-	}
-
-	return name
 }
 
 func GetSupportedLanguages() []string {
@@ -184,17 +146,16 @@ func GetSupportedLanguages() []string {
 }
 
 func IsSupported(language string) bool {
-	normalized := normalizeLanguageName(language)
+	normalized := resources.NormalizeLanguage(language)
 	_, exists := registry.Get(normalized)
 	return exists
 }
 
 func GetDetector(language string) (Detector, error) {
-	normalized := normalizeLanguageName(language)
+	normalized := resources.NormalizeLanguage(language)
 	detector, exists := registry.Get(normalized)
 	if !exists {
 		return nil, fmt.Errorf("unsupported language: %s", language)
 	}
 	return detector, nil
 }
-
