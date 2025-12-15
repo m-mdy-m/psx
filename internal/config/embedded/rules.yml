@@ -217,3 +217,339 @@ rules:
     message: "No CODEOWNERS file found"
     fix_hint: "psx fix --rule code_owners"
     doc_url: "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
+  
+  dockerfile:
+    id: "DOCKERFILE_RECOMMENDED"
+    category: devops
+    description: "Container images with Docker"
+    severity: info
+    patterns:
+      - Dockerfile
+      - docker/Dockerfile
+    message: "No Dockerfile found"
+    fix_hint: "psx fix --rule dockerfile"
+    doc_url: "https://docs.docker.com/engine/reference/builder/"
+
+  dockerignore:
+    id: "DOCKERIGNORE_RECOMMENDED"
+    category: devops
+    description: "Optimize Docker builds with .dockerignore"
+    severity: info
+    patterns:
+      - .dockerignore
+    message: "No .dockerignore found"
+    fix_hint: "psx fix --rule dockerignore"
+    doc_url: "https://docs.docker.com/engine/reference/builder/#dockerignore-file"
+
+  docker_compose:
+    id: "DOCKER_COMPOSE_RECOMMENDED"
+    category: devops
+    description: "Multi-container Docker applications"
+    severity: info
+    patterns:
+      - docker-compose.yml
+      - docker-compose.yaml
+      - compose.yml
+      - compose.yaml
+    message: "No docker-compose configuration found"
+    fix_hint: "psx fix --rule docker_compose"
+    doc_url: "https://docs.docker.com/compose/"
+
+  kubernetes:
+    id: "KUBERNETES_RECOMMENDED"
+    category: devops
+    description: "Kubernetes deployment configurations"
+    severity: info
+    patterns:
+      - k8s/
+      - kubernetes/
+      - deploy/
+    message: "No Kubernetes configurations found"
+    fix_hint: "psx fix --rule kubernetes"
+    doc_url: "https://kubernetes.io/docs/"
+
+  nginx_config:
+    id: "NGINX_CONFIG_RECOMMENDED"
+    category: devops
+    description: "Nginx configuration for web serving"
+    severity: info
+    patterns:
+      - nginx.conf
+      - nginx/
+      - conf/nginx/
+    message: "No Nginx configuration found"
+    fix_hint: "psx fix --rule nginx_config"
+    doc_url: "https://nginx.org/en/docs/"
+
+  infra_folder:
+    id: "INFRA_FOLDER_RECOMMENDED"
+    category: devops
+    description: "Infrastructure as Code configurations"
+    severity: info
+    patterns:
+      - infra/
+      - infrastructure/
+      - terraform/
+    message: "No infrastructure folder found"
+    fix_hint: "psx fix --rule infra_folder"
+    doc_url: ""
+
+  prettier:
+    id: "PRETTIER_RECOMMENDED"
+    category: quality
+    description: "Code formatter for JavaScript/TypeScript"
+    severity: info
+    patterns:
+      nodejs:
+        - .prettierrc
+        - .prettierrc.json
+        - .prettierrc.js
+        - prettier.config.js
+    message: "No Prettier configuration found"
+    fix_hint: "psx fix --rule prettier"
+    doc_url: "https://prettier.io"
+
+  prettierignore:
+    id: "PRETTIERIGNORE_RECOMMENDED"
+    category: quality
+    description: "Ignore files for Prettier"
+    severity: info
+    patterns:
+      nodejs:
+        - .prettierignore
+    message: "No .prettierignore found"
+    fix_hint: "psx fix --rule prettierignore"
+    doc_url: "https://prettier.io/docs/en/ignore.html"
+
+  eslint:
+    id: "ESLINT_RECOMMENDED"
+    category: quality
+    description: "JavaScript/TypeScript linter"
+    severity: info
+    patterns:
+      nodejs:
+        - .eslintrc
+        - .eslintrc.json
+        - .eslintrc.js
+        - eslint.config.js
+    message: "No ESLint configuration found"
+    fix_hint: "psx fix --rule eslint"
+    doc_url: "https://eslint.org"
+
+  commitlint:
+    id: "COMMITLINT_RECOMMENDED"
+    category: quality
+    description: "Enforce conventional commits"
+    severity: info
+    patterns:
+      nodejs:
+        - commitlint.config.js
+        - .commitlintrc
+        - .commitlintrc.json
+    message: "No Commitlint configuration found"
+    fix_hint: "psx fix --rule commitlint"
+    doc_url: "https://commitlint.js.org"
+
+  husky:
+    id: "HUSKY_RECOMMENDED"
+    category: quality
+    description: "Git hooks made easy"
+    severity: info
+    patterns:
+      nodejs:
+        - .husky/
+    message: "No Husky configuration found"
+    fix_hint: "psx fix --rule husky"
+    doc_url: "https://typicode.github.io/husky"
+
+  lint_staged:
+    id: "LINT_STAGED_RECOMMENDED"
+    category: quality
+    description: "Run linters on git staged files"
+    severity: info
+    patterns:
+      nodejs:
+        - .lintstagedrc
+        - .lintstagedrc.json
+        - lint-staged.config.js
+    message: "No lint-staged configuration found"
+    fix_hint: "psx fix --rule lint_staged"
+    doc_url: "https://github.com/okonet/lint-staged"
+
+  makefile:
+    id: "MAKEFILE_RECOMMENDED"
+    category: quality
+    description: "Build automation with Makefile"
+    severity: info
+    patterns:
+      - Makefile
+      - makefile
+    message: "No Makefile found"
+    fix_hint: "psx fix --rule makefile"
+    doc_url: "https://www.gnu.org/software/make/"
+
+  gitattributes:
+    id: "GITATTRIBUTES_RECOMMENDED"
+    category: quality
+    description: "Git attributes for better diffs"
+    severity: info
+    patterns:
+      - .gitattributes
+    message: "No .gitattributes found"
+    fix_hint: "psx fix --rule gitattributes"
+    doc_url: "https://git-scm.com/docs/gitattributes"
+
+  security:
+    id: "SECURITY_RECOMMENDED"
+    category: documentation
+    description: "Security policy and vulnerability reporting"
+    severity: info
+    patterns:
+      - SECURITY.md
+      - .github/SECURITY.md
+      - docs/SECURITY.md
+    message: "No SECURITY.md file found"
+    fix_hint: "psx fix --rule security"
+    doc_url: "https://docs.github.com/en/code-security"
+
+  code_of_conduct:
+    id: "CODE_OF_CONDUCT_RECOMMENDED"
+    category: documentation
+    description: "Community guidelines and conduct"
+    severity: info
+    patterns:
+      - CODE_OF_CONDUCT.md
+      - .github/CODE_OF_CONDUCT.md
+    message: "No CODE_OF_CONDUCT.md file found"
+    fix_hint: "psx fix --rule code_of_conduct"
+    doc_url: "https://docs.github.com/en/communities"
+
+  pull_request_template:
+    id: "PULL_REQUEST_TEMPLATE_RECOMMENDED"
+    category: documentation
+    description: "Template for pull requests"
+    severity: info
+    patterns:
+      - .github/PULL_REQUEST_TEMPLATE.md
+      - .github/pull_request_template.md
+      - docs/PULL_REQUEST_TEMPLATE.md
+    message: "No pull request template found"
+    fix_hint: "psx fix --rule pull_request_template"
+    doc_url: "https://docs.github.com/en/communities"
+
+  issue_templates:
+    id: "ISSUE_TEMPLATES_RECOMMENDED"
+    category: documentation
+    description: "Templates for issues"
+    severity: info
+    patterns:
+      - .github/ISSUE_TEMPLATE/
+    message: "No issue templates found"
+    fix_hint: "psx fix --rule issue_templates"
+    doc_url: "https://docs.github.com/en/communities"
+
+  funding:
+    id: "FUNDING_RECOMMENDED"
+    category: documentation
+    description: "Sponsorship and funding information"
+    severity: info
+    patterns:
+      - .github/FUNDING.yml
+      - FUNDING.md
+    message: "No funding information found"
+    fix_hint: "psx fix --rule funding"
+    doc_url: "https://docs.github.com/en/repositories"
+
+  support:
+    id: "SUPPORT_RECOMMENDED"
+    category: documentation
+    description: "Support and help resources"
+    severity: info
+    patterns:
+      - SUPPORT.md
+      - .github/SUPPORT.md
+      - docs/SUPPORT.md
+    message: "No SUPPORT.md file found"
+    fix_hint: "psx fix --rule support"
+    doc_url: "https://docs.github.com/en/communities"
+
+  roadmap:
+    id: "ROADMAP_RECOMMENDED"
+    category: documentation
+    description: "Project roadmap and future plans"
+    severity: info
+    patterns:
+      - ROADMAP.md
+      - docs/ROADMAP.md
+    message: "No ROADMAP.md file found"
+    fix_hint: "psx fix --rule roadmap"
+    doc_url: ""
+
+  # ============================================
+  # Project Structure (Extended)
+  # ============================================
+
+  scripts_folder:
+    id: "SCRIPTS_FOLDER_RECOMMENDED"
+    category: structure
+    description: "Utility scripts for development"
+    severity: info
+    patterns:
+      - scripts/
+      - script/
+      - bin/
+    message: "No scripts folder found"
+    fix_hint: "psx fix --rule scripts_folder"
+    doc_url: ""
+
+  env_example:
+    id: "ENV_EXAMPLE_RECOMMENDED"
+    category: structure
+    description: "Example environment configuration"
+    severity: info
+    patterns:
+      - .env.example
+      - .env.sample
+      - env.example
+    message: "No .env.example file found"
+    fix_hint: "psx fix --rule env_example"
+    doc_url: ""
+
+  # ============================================
+  # CI/CD (Extended)
+  # ============================================
+
+  github_actions:
+    id: "GITHUB_ACTIONS_RECOMMENDED"
+    category: cicd
+    description: "GitHub Actions workflows"
+    severity: info
+    patterns:
+      - .github/workflows/
+    message: "No GitHub Actions workflows found"
+    fix_hint: "psx fix --rule github_actions"
+    doc_url: "https://docs.github.com/en/actions"
+
+  renovate:
+    id: "RENOVATE_RECOMMENDED"
+    category: cicd
+    description: "Automated dependency updates with Renovate"
+    severity: info
+    patterns:
+      - renovate.json
+      - .github/renovate.json
+    message: "No Renovate configuration found"
+    fix_hint: "psx fix --rule renovate"
+    doc_url: "https://docs.renovatebot.com"
+
+  dependabot:
+    id: "DEPENDABOT_RECOMMENDED"
+    category: cicd
+    description: "Automated dependency updates with Dependabot"
+    severity: info
+    patterns:
+      - .github/dependabot.yml
+      - .github/dependabot.yaml
+    message: "No Dependabot configuration found"
+    fix_hint: "psx fix --rule dependabot"
+    doc_url: "https://docs.github.com/en/code-security/dependabot"
