@@ -15,11 +15,15 @@ import (
 var resourcesFS embed.FS
 
 var (
-	languages  *LanguagesConfig
-	messages   *MessagesConfig
-	gitignores *GitignoresConfig
-	licenses   *LicensesConfig
-	templates  *TemplatesConfig
+	languages     *LanguagesConfig
+	messages      *MessagesConfig
+	gitignores    *GitignoresConfig
+	licenses      *LicensesConfig
+	templates     *TemplatesConfig
+	qualityTools  *QualityToolsConfig
+	devops        *DevOpsConfig
+	docsTemplates *DocsTemplatesConfig
+	scripts       *ScriptsConfig
 )
 
 func init() {
@@ -48,6 +52,26 @@ func init() {
 	templates, err = loadYAML[TemplatesConfig]("embedded/templates.yml")
 	if err != nil {
 		logger.Fatalf("Failed to load templates: %v", err)
+	}
+
+	qualityTools, err = loadYAML[QualityToolsConfig]("embedded/quality-tools.yml")
+	if err != nil {
+		logger.Fatalf("Failed to load quality-tools: %v", err)
+	}
+
+	devops, err = loadYAML[DevOpsConfig]("embedded/devops.yml")
+	if err != nil {
+		logger.Fatalf("Failed to load devops: %v", err)
+	}
+
+	docsTemplates, err = loadYAML[DocsTemplatesConfig]("embedded/docs-templates.yml")
+	if err != nil {
+		logger.Fatalf("Failed to load docs-templates: %v", err)
+	}
+
+	scripts, err = loadYAML[ScriptsConfig]("embedded/scripts.yml")
+	if err != nil {
+		logger.Fatalf("Failed to load scripts: %v", err)
 	}
 
 	logger.Verbose("Resources loaded successfully")
