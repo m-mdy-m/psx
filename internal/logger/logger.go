@@ -64,8 +64,10 @@ func Error(m string) {
 	}
 }
 
-func Errorf(format string, args ...any) {
-	Error(fmt.Sprintf(format, args...))
+func Errorf(format string, args ...any) error {
+	err := fmt.Errorf(format, args...)
+	Error(err.Error())
+	return err
 }
 
 // Verbose prints debug info (only with --verbose)
