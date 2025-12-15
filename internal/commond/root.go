@@ -1,11 +1,10 @@
-package cli
+package commond
 
 import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/m-mdy-m/psx/internal/flags"
 
-	"github.com/m-mdy-m/psx/internal/commond"
 )
 
 var root=&cobra.Command{
@@ -47,7 +46,6 @@ func initGlobalFlags(){
 }
 func init() {
     initGlobalFlags()
-
-	root.AddCommand(commond.CheckCmd)
+	root.AddCommand(CheckCmd)
 }
 
