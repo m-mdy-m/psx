@@ -1,0 +1,555 @@
+# Tools Templates and Configurations
+
+# EditorConfig - Universal
+editorconfig:
+  generic: |
+    # EditorConfig is awesome: https://EditorConfig.org
+    root = true
+
+    # Unix-style newlines with a newline ending every file
+    [*]
+    charset = utf-8
+    end_of_line = lf
+    insert_final_newline = true
+    trim_trailing_whitespace = true
+    indent_style = space
+    indent_size = 2
+
+    # Markdown files
+    [*.md]
+    trim_trailing_whitespace = false
+    max_line_length = off
+
+    # YAML files
+    [*.{yml,yaml}]
+    indent_size = 2
+
+    # JSON files
+    [*.json]
+    indent_size = 2
+
+    # Shell scripts
+    [*.{sh,bash}]
+    indent_style = space
+    indent_size = 2
+
+    # Makefile
+    [{Makefile,*.mk}]
+    indent_style = tab
+    indent_size = 4
+
+  nodejs: |
+    root = true
+
+    [*]
+    charset = utf-8
+    end_of_line = lf
+    insert_final_newline = true
+    trim_trailing_whitespace = true
+    indent_style = space
+    indent_size = 2
+
+    [*.{js,jsx,ts,tsx}]
+    indent_size = 2
+
+    [*.md]
+    trim_trailing_whitespace = false
+
+    [*.json]
+    indent_size = 2
+
+    [{package.json,.prettierrc}]
+    indent_size = 2
+
+  go: |
+    root = true
+
+    [*]
+    charset = utf-8
+    end_of_line = lf
+    insert_final_newline = true
+    trim_trailing_whitespace = true
+
+    [*.go]
+    indent_style = tab
+    indent_size = 4
+
+    [*.{yml,yaml}]
+    indent_style = space
+    indent_size = 2
+
+    [*.md]
+    trim_trailing_whitespace = false
+
+    [{Makefile,*.mk}]
+    indent_style = tab
+    indent_size = 4
+
+  python: |
+    root = true
+
+    [*]
+    charset = utf-8
+    end_of_line = lf
+    insert_final_newline = true
+    trim_trailing_whitespace = true
+    indent_style = space
+    indent_size = 4
+
+    [*.py]
+    indent_size = 4
+    max_line_length = 88
+
+    [*.{yml,yaml}]
+    indent_size = 2
+
+    [*.md]
+    trim_trailing_whitespace = false
+
+  rust: |
+    root = true
+
+    [*]
+    charset = utf-8
+    end_of_line = lf
+    insert_final_newline = true
+    trim_trailing_whitespace = true
+    indent_style = space
+    indent_size = 4
+
+    [*.rs]
+    indent_size = 4
+
+    [*.toml]
+    indent_size = 2
+
+    [*.md]
+    trim_trailing_whitespace = false
+
+# Prettier - Node.js specific
+prettier:
+  config: |
+    {
+      "semi": true,
+      "trailingComma": "es5",
+      "singleQuote": true,
+      "printWidth": 80,
+      "tabWidth": 2,
+      "useTabs": false,
+      "arrowParens": "always",
+      "endOfLine": "lf"
+    }
+
+  ignore: |
+    # Dependencies
+    node_modules/
+    package-lock.json
+    yarn.lock
+    pnpm-lock.yaml
+
+    # Build outputs
+    dist/
+    build/
+    .next/
+    out/
+    coverage/
+
+    # Config files
+    .env*
+
+# ESLint - Node.js
+eslint:
+  basic: |
+    {
+      "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true
+      },
+      "extends": [
+        "eslint:recommended"
+      ],
+      "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+      },
+      "rules": {
+        "no-console": "warn",
+        "no-unused-vars": "warn"
+      }
+    }
+
+  typescript: |
+    {
+      "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true
+      },
+      "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+      },
+      "plugins": ["@typescript-eslint"],
+      "rules": {
+        "no-console": "warn",
+        "@typescript-eslint/no-unused-vars": "warn"
+      }
+    }
+
+# Commitlint
+commitlint:
+  config: |
+    module.exports = {
+      extends: ['@commitlint/config-conventional'],
+      rules: {
+        'type-enum': [
+          2,
+          'always',
+          [
+            'feat',
+            'fix',
+            'docs',
+            'style',
+            'refactor',
+            'perf',
+            'test',
+            'chore',
+            'revert',
+            'ci',
+            'build'
+          ]
+        ],
+        'subject-case': [2, 'never', ['upper-case']]
+      }
+    };
+
+# Husky - Git hooks
+husky:
+  pre_commit: |
+    #!/usr/bin/env sh
+    . "$(dirname -- "$0")/_/husky.sh"
+
+    npm run lint
+    npm run test
+
+  commit_msg: |
+    #!/usr/bin/env sh
+    . "$(dirname -- "$0")/_/husky.sh"
+
+    npx --no -- commitlint --edit ${1}
+
+# Pre-commit (Python tool)
+pre_commit:
+  generic: |
+    # See https://pre-commit.com for more information
+    repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-added-large-files
+          - id: check-merge-conflict
+          - id: check-case-conflict
+          - id: mixed-line-ending
+
+  nodejs: |
+    repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-json
+          - id: check-added-large-files
+          - id: check-merge-conflict
+
+      - repo: https://github.com/pre-commit/mirrors-prettier
+        rev: v3.1.0
+        hooks:
+          - id: prettier
+            types_or: [javascript, jsx, ts, tsx, json, yaml]
+
+      - repo: https://github.com/pre-commit/mirrors-eslint
+        rev: v8.56.0
+        hooks:
+          - id: eslint
+            files: \.[jt]sx?$
+            types: [file]
+
+  python: |
+    repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-added-large-files
+          - id: check-merge-conflict
+
+      - repo: https://github.com/psf/black
+        rev: 23.12.1
+        hooks:
+          - id: black
+            language_version: python3
+
+      - repo: https://github.com/PyCQA/flake8
+        rev: 7.0.0
+        hooks:
+          - id: flake8
+
+  go: |
+    repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-added-large-files
+          - id: check-merge-conflict
+
+      - repo: https://github.com/golangci/golangci-lint
+        rev: v1.55.2
+        hooks:
+          - id: golangci-lint
+
+  rust: |
+    repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-added-large-files
+          - id: check-merge-conflict
+
+      - repo: https://github.com/doublify/pre-commit-rust
+        rev: v1.0
+        hooks:
+          - id: fmt
+          - id: cargo-check
+          - id: clippy
+
+# Lint-staged
+lint_staged:
+  nodejs: |
+    {
+      "*.{js,jsx,ts,tsx}": [
+        "eslint --fix",
+        "prettier --write"
+      ],
+      "*.{json,md,yml,yaml}": [
+        "prettier --write"
+      ]
+    }
+
+# Git Attributes
+gitattributes:
+  generic: |
+    # Auto detect text files and perform LF normalization
+    * text=auto
+
+    # Source code
+    *.sh text eol=lf
+
+    # Documents
+    *.md text
+    *.txt text
+
+    # Graphics
+    *.png binary
+    *.jpg binary
+    *.jpeg binary
+    *.gif binary
+    *.ico binary
+    *.svg text
+
+    # Archives
+    *.gz binary
+    *.tar binary
+    *.zip binary
+
+  nodejs: |
+    * text=auto
+
+    # Source
+    *.js text eol=lf
+    *.jsx text eol=lf
+    *.ts text eol=lf
+    *.tsx text eol=lf
+    *.json text eol=lf
+
+    # Config
+    .npmrc text eol=lf
+    .nvmrc text eol=lf
+
+    # Shell
+    *.sh text eol=lf
+
+    # Binary
+    *.png binary
+    *.jpg binary
+
+  go: |
+    * text=auto
+
+    # Source
+    *.go text eol=lf
+    go.mod text eol=lf
+    go.sum text eol=lf
+
+    # Shell
+    *.sh text eol=lf
+
+    # Makefile
+    Makefile text eol=lf
+
+    # Binary
+    *.exe binary
+    *.so binary
+
+  python: |
+    * text=auto
+
+    # Source
+    *.py text eol=lf
+
+    # Config
+    requirements.txt text eol=lf
+    setup.py text eol=lf
+
+    # Shell
+    *.sh text eol=lf
+
+    # Binary
+    *.pyc binary
+
+# Makefile templates
+makefile:
+  nodejs: |
+    .PHONY: help install dev build test lint clean
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+    install: ## Install dependencies
+    	npm install
+
+    dev: ## Start development server
+    	npm run dev
+
+    build: ## Build for production
+    	npm run build
+
+    test: ## Run tests
+    	npm test
+
+    lint: ## Lint code
+    	npm run lint
+
+    format: ## Format code
+    	npm run format
+
+    clean: ## Clean build artifacts
+    	rm -rf dist build node_modules
+
+  go: |
+    .PHONY: help build test lint clean install
+
+    BINARY_NAME=app
+    BUILD_DIR=./build
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+    build: ## Build the application
+    	go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+
+    test: ## Run tests
+    	go test -v ./...
+
+    test-coverage: ## Run tests with coverage
+    	go test -v -coverprofile=coverage.out ./...
+    	go tool cover -html=coverage.out
+
+    lint: ## Lint code
+    	golangci-lint run
+
+    fmt: ## Format code
+    	go fmt ./...
+
+    clean: ## Clean build artifacts
+    	rm -rf $(BUILD_DIR)
+    	rm -f coverage.out
+
+    install: ## Install dependencies
+    	go mod download
+    	go mod tidy
+
+  python: |
+    .PHONY: help install dev test lint clean
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+    install: ## Install dependencies
+    	pip install -r requirements.txt
+
+    dev: ## Install dev dependencies
+    	pip install -r requirements-dev.txt
+
+    test: ## Run tests
+    	pytest
+
+    test-coverage: ## Run tests with coverage
+    	pytest --cov=. --cov-report=html
+
+    lint: ## Lint code
+    	flake8 .
+    	black --check .
+
+    format: ## Format code
+    	black .
+
+    clean: ## Clean artifacts
+    	find . -type d -name __pycache__ -exec rm -rf {} +
+    	find . -type f -name '*.pyc' -delete
+    	rm -rf .pytest_cache htmlcov .coverage
+
+  rust: |
+    .PHONY: help build test lint clean
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+    build: ## Build the application
+    	cargo build
+
+    build-release: ## Build for release
+    	cargo build --release
+
+    test: ## Run tests
+    	cargo test
+
+    lint: ## Lint code
+    	cargo clippy -- -D warnings
+
+    fmt: ## Format code
+    	cargo fmt
+
+    clean: ## Clean build artifacts
+    	cargo clean
+
+    install: ## Install dependencies
+    	cargo fetch

@@ -1,0 +1,480 @@
+# Documentation Templates
+
+# Security
+security: |
+  # Security Policy
+
+  ## Supported Versions
+
+  We release patches for security vulnerabilities. Which versions are eligible for
+  receiving such patches depends on the CVSS v3.0 Rating:
+
+  | Version | Supported          |
+  | ------- | ------------------ |
+  | 1.x.x   | :white_check_mark: |
+  | < 1.0   | :x:                |
+
+  ## Reporting a Vulnerability
+
+  Please report security vulnerabilities to: {{security_email}}
+
+  **Please do not report security vulnerabilities through public GitHub issues.**
+
+  You should receive a response within 48 hours. If for some reason you do not, please follow up to ensure we received your original message.
+
+  Please include the following information in your report:
+
+  - Type of issue (e.g. buffer overflow, SQL injection, cross-site scripting, etc.)
+  - Full paths of source file(s) related to the manifestation of the issue
+  - The location of the affected source code (tag/branch/commit or direct URL)
+  - Any special configuration required to reproduce the issue
+  - Step-by-step instructions to reproduce the issue
+  - Proof-of-concept or exploit code (if possible)
+  - Impact of the issue, including how an attacker might exploit it
+
+  ## Preferred Languages
+
+  We prefer all communications to be in English.
+
+  ## Policy
+
+  We follow the principle of Coordinated Vulnerability Disclosure.
+
+# Code of Conduct
+code_of_conduct: |
+  # Code of Conduct
+
+  ## Our Pledge
+
+  We as members, contributors, and leaders pledge to make participation in our
+  community a harassment-free experience for everyone, regardless of age, body
+  size, visible or invisible disability, ethnicity, sex characteristics, gender
+  identity and expression, level of experience, education, socio-economic status,
+  nationality, personal appearance, race, caste, color, religion, or sexual
+  identity and orientation.
+
+  We pledge to act and interact in ways that contribute to an open, welcoming,
+  diverse, inclusive, and healthy community.
+
+  ## Our Standards
+
+  Examples of behavior that contributes to a positive environment:
+
+  - Demonstrating empathy and kindness toward other people
+  - Being respectful of differing opinions, viewpoints, and experiences
+  - Giving and gracefully accepting constructive feedback
+  - Accepting responsibility and apologizing to those affected by our mistakes
+  - Focusing on what is best not just for us as individuals, but for the overall community
+
+  Examples of unacceptable behavior:
+
+  - The use of sexualized language or imagery, and sexual attention or advances of any kind
+  - Trolling, insulting or derogatory comments, and personal or political attacks
+  - Public or private harassment
+  - Publishing others' private information without their explicit permission
+  - Other conduct which could reasonably be considered inappropriate in a professional setting
+
+  ## Enforcement Responsibilities
+
+  Community leaders are responsible for clarifying and enforcing our standards of
+  acceptable behavior and will take appropriate and fair corrective action in
+  response to any behavior that they deem inappropriate, threatening, offensive,
+  or harmful.
+
+  ## Scope
+
+  This Code of Conduct applies within all community spaces, and also applies when
+  an individual is officially representing the community in public spaces.
+
+  ## Enforcement
+
+  Instances of abusive, harassing, or otherwise unacceptable behavior may be
+  reported to the community leaders responsible for enforcement at {{conduct_email}}.
+
+  All complaints will be reviewed and investigated promptly and fairly.
+
+  ## Attribution
+
+  This Code of Conduct is adapted from the [Contributor Covenant][homepage],
+  version 2.1, available at
+  https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+
+  [homepage]: https://www.contributor-covenant.org
+
+# Pull Request Template
+pull_request_template: |
+  ## Description
+
+  <!-- Please include a summary of the changes and which issue is fixed -->
+
+  Fixes # (issue)
+
+  ## Type of change
+
+  <!-- Please delete options that are not relevant -->
+
+  - [ ] Bug fix (non-breaking change which fixes an issue)
+  - [ ] New feature (non-breaking change which adds functionality)
+  - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+  - [ ] This change requires a documentation update
+
+  ## How Has This Been Tested?
+
+  <!-- Please describe the tests that you ran to verify your changes -->
+
+  - [ ] Test A
+  - [ ] Test B
+
+  **Test Configuration**:
+  - OS:
+  - Node version:
+  - Other relevant details:
+
+  ## Checklist:
+
+  - [ ] My code follows the style guidelines of this project
+  - [ ] I have performed a self-review of my code
+  - [ ] I have commented my code, particularly in hard-to-understand areas
+  - [ ] I have made corresponding changes to the documentation
+  - [ ] My changes generate no new warnings
+  - [ ] I have added tests that prove my fix is effective or that my feature works
+  - [ ] New and existing unit tests pass locally with my changes
+  - [ ] Any dependent changes have been merged and published
+
+# Funding
+funding: |
+  # Funding
+
+  If you find this project useful, please consider supporting it:
+
+  ## GitHub Sponsors
+
+  [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub-pink.svg)](https://github.com/sponsors/{{github_username}})
+
+  ## Other Ways to Support
+
+  - ⭐ Star the project
+  - 🐛 Report bugs
+  - 💡 Suggest features
+  - 📝 Improve documentation
+  - 🔀 Submit pull requests
+
+  Your support helps maintain and improve this project. Thank you! ❤️
+
+funding_yml: |
+  github: [{{github_username}}]
+  patreon: {{patreon_username}}
+  ko_fi: {{kofi_username}}
+  custom: ["{{custom_url}}"]
+
+# Issue Templates - Bug Report
+issue_bug_report: |
+  ---
+  name: Bug Report
+  about: Create a report to help us improve
+  title: '[BUG] '
+  labels: bug
+  assignees: ''
+  ---
+
+  ## Describe the bug
+
+  A clear and concise description of what the bug is.
+
+  ## To Reproduce
+
+  Steps to reproduce the behavior:
+
+  1. Go to '...'
+  2. Click on '...'
+  3. Scroll down to '...'
+  4. See error
+
+  ## Expected behavior
+
+  A clear and concise description of what you expected to happen.
+
+  ## Screenshots
+
+  If applicable, add screenshots to help explain your problem.
+
+  ## Environment
+
+  - OS: [e.g. Ubuntu 22.04]
+  - Version: [e.g. 1.0.0]
+  - Browser (if applicable): [e.g. Chrome 120]
+
+  ## Additional context
+
+  Add any other context about the problem here.
+
+# Issue Templates - Feature Request
+issue_feature_request: |
+  ---
+  name: Feature Request
+  about: Suggest an idea for this project
+  title: '[FEATURE] '
+  labels: enhancement
+  assignees: ''
+  ---
+
+  ## Is your feature request related to a problem?
+
+  A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+
+  ## Describe the solution you'd like
+
+  A clear and concise description of what you want to happen.
+
+  ## Describe alternatives you've considered
+
+  A clear and concise description of any alternative solutions or features you've considered.
+
+  ## Additional context
+
+  Add any other context or screenshots about the feature request here.
+
+  ## Would you like to implement this feature?
+
+  - [ ] Yes, I'd like to implement this
+  - [ ] No, but I can help with testing
+  - [ ] No, just suggesting
+
+# Issue Templates - Question
+issue_question: |
+  ---
+  name: Question
+  about: Ask a question about the project
+  title: '[QUESTION] '
+  labels: question
+  assignees: ''
+  ---
+
+  ## Your Question
+
+  Please describe your question clearly.
+
+  ## Context
+
+  Any additional context that might help us answer your question.
+
+  ## What have you tried?
+
+  Please describe what you've already tried or where you've looked for answers.
+
+# Issue Templates Config
+issue_templates_config: |
+  blank_issues_enabled: false
+  contact_links:
+    - name: 💬 Discussions
+      url: https://github.com/{{github_username}}/{{repo_name}}/discussions
+      about: Ask questions and discuss ideas
+    - name: 📖 Documentation
+      url: https://{{docs_url}}
+      about: Check out our documentation
+    - name: 💡 Stack Overflow
+      url: https://stackoverflow.com/questions/tagged/{{project_name}}
+      about: Ask questions on Stack Overflow
+
+# CODEOWNERS
+codeowners: |
+  # Code Owners
+  # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+  # Global owners
+  *                   @{{github_username}}
+
+  # Documentation
+  /docs/              @{{github_username}}
+  *.md                @{{github_username}}
+
+  # CI/CD
+  /.github/           @{{github_username}}
+  /.gitlab-ci.yml     @{{github_username}}
+
+  # Configuration
+  /*.yml              @{{github_username}}
+  /*.yaml             @{{github_username}}
+  /*.json             @{{github_username}}
+
+# Support
+support: |
+  # Support
+
+  ## Getting Help
+
+  If you need help with {{project_name}}, here are your options:
+
+  ### 📖 Documentation
+
+  Check out our [documentation]({{docs_url}}) first - it covers most common questions.
+
+  ### 💬 Discussions
+
+  For questions and discussions, use [GitHub Discussions](https://github.com/{{github_username}}/{{repo_name}}/discussions).
+
+  ### 🐛 Bug Reports
+
+  Found a bug? Please [open an issue](https://github.com/{{github_username}}/{{repo_name}}/issues/new/choose).
+
+  ### 💡 Feature Requests
+
+  Have an idea? We'd love to hear it! [Request a feature](https://github.com/{{github_username}}/{{repo_name}}/issues/new/choose).
+
+  ### 📧 Email
+
+  For private inquiries, email us at: {{support_email}}
+
+  ## Response Times
+
+  - Issues: We aim to respond within 48 hours
+  - Discussions: Usually within 24-48 hours
+  - Security issues: Within 24 hours
+
+  ## Contributing
+
+  Want to help improve {{project_name}}? Check out our [Contributing Guide](CONTRIBUTING.md).
+
+  ## Community
+
+  Join our community:
+
+  - 💬 [Discord]({{discord_url}}) (if available)
+  - 🐦 [Twitter]({{twitter_url}}) (if available)
+  - 📧 [Mailing List]({{mailing_list}}) (if available)
+
+# Roadmap
+roadmap: |
+  # Roadmap
+
+  This document outlines the planned features and improvements for {{project_name}}.
+
+  ## Current Version: {{current_version}}
+
+  ## Short Term (Next Release)
+
+  - [ ] Feature 1
+  - [ ] Feature 2
+  - [ ] Bug fix 1
+  - [ ] Performance improvement 1
+
+  ## Medium Term (Next 3-6 months)
+
+  - [ ] Major feature 1
+  - [ ] Major feature 2
+  - [ ] Refactoring of component X
+  - [ ] Documentation improvements
+
+  ## Long Term (6+ months)
+
+  - [ ] Breaking change 1 (v2.0)
+  - [ ] Major architecture change
+  - [ ] New platform support
+
+  ## Completed
+
+  ### v{{last_version}}
+
+  - [x] Feature that was completed
+  - [x] Another completed feature
+
+  ## Want to Contribute?
+
+  Check out [CONTRIBUTING.md](CONTRIBUTING.md) to see how you can help with these items.
+
+  ## Feedback
+
+  Have suggestions for the roadmap? [Open a discussion](https://github.com/{{github_username}}/{{repo_name}}/discussions).
+
+# Architecture Decision Records Template
+adr_template: |
+  # {{number}}. {{title}}
+
+  Date: {{date}}
+
+  ## Status
+
+  {{status}}
+  <!-- Options: Proposed, Accepted, Deprecated, Superseded -->
+
+  ## Context
+
+  <!-- What is the issue that we're seeing that is motivating this decision or change? -->
+
+  ## Decision
+
+  <!-- What is the change that we're proposing and/or doing? -->
+
+  ## Consequences
+
+  <!-- What becomes easier or more difficult to do because of this change? -->
+
+  ### Positive
+
+  - 
+
+  ### Negative
+
+  - 
+
+  ### Neutral
+
+  - 
+
+  ## Alternatives Considered
+
+  <!-- What other options were considered and why were they rejected? -->
+
+  ## References
+
+  <!-- Links to related documents, discussions, or resources -->
+
+# Example Environment File
+env_example:
+  nodejs: |
+    # Application
+    NODE_ENV=development
+    PORT=3000
+
+    # Database
+    DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+    # API Keys
+    API_KEY=your-api-key-here
+
+    # Security
+    JWT_SECRET=your-jwt-secret-here
+    SESSION_SECRET=your-session-secret-here
+
+  go: |
+    # Application
+    APP_ENV=development
+    APP_PORT=8080
+
+    # Database
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_USER=user
+    DB_PASSWORD=password
+    DB_NAME=dbname
+
+    # API Keys
+    API_KEY=your-api-key-here
+
+  python: |
+    # Application
+    ENVIRONMENT=development
+    PORT=8000
+
+    # Database
+    DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+    # Security
+    SECRET_KEY=your-secret-key-here
+
+  generic: |
+    # Environment Configuration
+    ENVIRONMENT=development
+    PORT=8080
+
+    # Add your environment variables here
