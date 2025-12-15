@@ -209,3 +209,126 @@ func hasMatchingFiles(rootPath string, suffix string) (bool, int) {
 
 	return found, count
 }
+
+
+func CheckScriptsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, info := shared.FileExists(fullPath)
+		if exists && info != nil && info.IsDir() {
+			result.Passed = true
+			result.Message = "Scripts folder found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckEnvExampleRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = ".env.example found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+// ============================================
+// CI/CD Rules
+// ============================================
+
+func CheckGitHubActionsRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, info := shared.FileExists(fullPath)
+		if exists && info != nil && info.IsDir() {
+			isEmpty, _ := shared.IsDirEmpty(fullPath)
+			if !isEmpty {
+				result.Passed = true
+				result.Message = "GitHub Actions workflows found"
+				return result
+			}
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckRenovateRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "Renovate configuration found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckDependabotRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "Dependabot configuration found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}

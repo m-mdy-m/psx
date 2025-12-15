@@ -183,3 +183,167 @@ func CheckCodeOwnersRule(ctx *Context, metadata *config.RuleMetadata) RuleResult
 	return result
 }
 
+
+func CheckSecurityRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "SECURITY.md found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckCodeOfConductRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "CODE_OF_CONDUCT.md found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckPullRequestTemplateRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "Pull request template found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckIssueTemplatesRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, info := shared.FileExists(fullPath)
+		if exists && info != nil && info.IsDir() {
+			isEmpty, _ := shared.IsDirEmpty(fullPath)
+			if !isEmpty {
+				result.Passed = true
+				result.Message = "Issue templates found"
+				return result
+			}
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckFundingRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "Funding information found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckSupportRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "SUPPORT.md found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
+
+func CheckRoadmapRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
+	result := RuleResult{
+		Message: metadata.Message,
+		FixHint: metadata.FixHint,
+		DocURL:  metadata.DocURL,
+	}
+
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(ctx.ProjectPath, pattern)
+		exists, _ := shared.FileExists(fullPath)
+		if exists {
+			result.Passed = true
+			result.Message = "ROADMAP.md found"
+			return result
+		}
+	}
+
+	result.Passed = false
+	return result
+}
