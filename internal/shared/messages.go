@@ -1,138 +1,163 @@
 package shared
 
-import (
-	"fmt"
+import "fmt"
+
+// Exit codes
+const (
+	ExitSuccess = 0
+	ExitFailed  = 1
+	ExitConfig  = 2
+	ExitFS      = 3
+	ExitArgs    = 4
 )
 
-func Help() {
-	fmt.Println(`
-╔═══════════════════════════════════════════════════════════════╗
-║                PSX - Project Structure Checker                ║
-║                    Version: development                        ║
-╚═══════════════════════════════════════════════════════════════╝
-
-PSX validates and standardizes project structures across different
-programming languages and frameworks.
-
-USAGE:
-  psx [command] [flags]
-
-CORE COMMANDS:
-  check       Validate project structure
-  fix         Automatically fix structural issues
-  init        Initialize PSX configuration
-  rules       List available validation rules
-  config      Manage PSX configuration
-  version     Show version information
-
-EXAMPLES:
-  # Basic usage
-  psx check                    Check current directory
-  psx fix --interactive        Fix issues with confirmation
-  psx init                     Create configuration file
-
-  # Advanced usage
-  psx check --verbose          Detailed validation output
-  psx check --output json      JSON output for CI/CD
-  psx fix --dry-run            Preview fixes without applying
-  psx rules --category general Show only general rules
-
-GLOBAL FLAGS:
-  -v, --verbose                Show detailed information
-  -q, --quiet                  Minimal output
-      --config <file>          Use specific config file
-      --no-color               Disable colored output
-  -h, --help                   Show help
-
-Run 'psx [command] --help' for more information about a command.
-
-DOCUMENTATION:
-  Repository:  https://github.com/m-mdy-m/psx
-  Issues:      https://github.com/m-mdy-m/psx/issues
-  Email:       bitsgenix@gmail.com
-`)
+// Exit status messages
+func ExitMessage(code int) string {
+	messages := map[int]string{
+		ExitSuccess: "Success",
+		ExitFailed:  "Validation failed",
+		ExitConfig:  "Configuration error",
+		ExitFS:      "File system error",
+		ExitArgs:    "Invalid arguments",
+	}
+	if msg, ok := messages[code]; ok {
+		return msg
+	}
+	return "Unknown error"
 }
 
-func ShortHelp() {
-	fmt.Println(`
-PSX - Project Structure Checker
+// Error messages
+const (
+	ErrConfigNotFound    = "config_not_found"
+	ErrInvalidConfig     = "invalid_config"
+	ErrNoProject         = "no_project"
+	ErrPermissionDenied  = "permission_denied"
+	ErrUnknownRule       = "unknown_rule"
+	ErrFixFailed         = "fix_failed"
+	ErrDetectionFailed   = "detection_failed"
+)
+
+func ErrorMessage(errType string) string {
+	messages := map[string]string{
+		ErrConfigNotFound:   "Configuration not found. Run 'psx init' to create one",
+		ErrInvalidConfig:    "Invalid configuration. Run 'psx config validate' to check",
+		ErrNoProject:        "Not in a project directory",
+		ErrPermissionDenied: "Permission denied",
+		ErrUnknownRule:      "Unknown rule. Run 'psx rules' to list available rules",
+		ErrFixFailed:        "Fix operation failed",
+		ErrDetectionFailed:  "Could not detect project type",
+	}
+	if msg, ok := messages[errType]; ok {
+		return msg
+	}
+	return "An error occurred"
+}
+
+// Help messages
+func Help() {
+	fmt.Print(`PSX - Project Structure Checker
 
 Usage: psx [command] [flags]
 
 Commands:
   check       Validate project structure
   fix         Fix structural issues
-  init        Initialize configuration
+  init        Create configuration file
   rules       List validation rules
   config      Manage configuration
   version     Show version
 
-Run 'psx --help' for detailed information.
+Flags:
+  -v, --verbose       Show detailed output
+  -q, --quiet         Minimal output
+      --config PATH   Config file path
+      --no-color      Disable colors
+  -h, --help          Show help
+
+Examples:
+  psx check
+  psx fix --interactive
+  psx init --template nodejs
+
+Documentation: https://github.com/m-mdy-m/psx
 `)
 }
 
-func WelcomeBanner() {
-	fmt.Println(`
-╔═══════════════════════════════════════════════════════════════╗
-║                PSX - Project Structure Checker                ║
-╚═══════════════════════════════════════════════════════════════╝
-`)
+func Version(version string) {
+	fmt.Printf("PSX version %s\n", version)
 }
 
-func GoodbyeMessage() {
-	fmt.Println(`
-Thank you for using PSX! 👋
-Report issues: https://github.com/m-mdy-m/psx/issues
-`)
+func VerboseVersion(version string) {
+	fmt.Printf(`PSX - Project Structure Checker
+Version: %s
+License: MIT
+Repository: https://github.com/m-mdy-m/psx
+`, version)
 }
 
-func QuickStart() {
-	fmt.Println(`
-QUICK START:
-
-1. Initialize Configuration:
-   psx init
-
-2. Check Your Project:
-   psx check --verbose
-
-3. Fix Issues:
-   psx fix --interactive
-
-4. Customize Rules:
-   Edit psx.yml in your project root
-
-Need help? Run 'psx --help' or visit:
-https://github.com/m-mdy-m/psx
-`)
-}
-
-func CommonErrors() map[string]string {
-	return map[string]string{
-		"config_not_found":   "No configuration file found. Run 'psx init' to create one.",
-		"invalid_config":     "Configuration file is invalid. Run 'psx config validate' to check.",
-		"no_project":         "Not in a project directory. Specify path with 'psx check ./path'",
-		"permission_denied":  "Permission denied. Try running with appropriate permissions.",
-		"unknown_rule":       "Unknown rule. Run 'psx rules' to see available rules.",
-		"fix_failed":         "Fix operation failed. Review the error and try manual fixing.",
+// Success messages
+func CheckSuccess(passed, total int) string {
+	if passed == total {
+		return fmt.Sprintf("All %d checks passed", total)
 	}
+	return fmt.Sprintf("%d of %d checks passed", passed, total)
 }
 
-func GetErrorHelp(errorType string) string {
-	errors := CommonErrors()
-	if help, exists := errors[errorType]; exists {
-		return help
+func FixSuccess(fixed int) string {
+	if fixed == 0 {
+		return "No fixes needed"
 	}
-	return "Run 'psx --help' for usage information."
+	if fixed == 1 {
+		return "Fixed 1 issue"
+	}
+	return fmt.Sprintf("Fixed %d issues", fixed)
 }
 
-func ExitMessages() map[int]string {
-	return map[int]string{
-		0: "Success",
-		1: "Validation failed or errors found",
-		2: "Configuration error",
-		3: "File system error",
-		4: "Invalid arguments",
+func InitSuccess(path string) string {
+	return fmt.Sprintf("Created configuration: %s", path)
+}
+
+// Verbose messages
+func VerboseCheckStart(path string) string {
+	return fmt.Sprintf("Checking project: %s", path)
+}
+
+func VerboseDetected(projectType string) string {
+	return fmt.Sprintf("Detected: %s", projectType)
+}
+
+func VerboseRulesLoaded(count int) string {
+	return fmt.Sprintf("Loaded %d rules", count)
+}
+
+func VerboseRuleCheck(ruleID string) string {
+	return fmt.Sprintf("Checking: %s", ruleID)
+}
+
+func VerboseFixApplied(ruleID string) string {
+	return fmt.Sprintf("Applied fix: %s", ruleID)
+}
+
+func VerboseConfigLoaded(path string) string {
+	return fmt.Sprintf("Config loaded: %s", path)
+}
+
+// Fix messages
+func FixPrompt(count int) string {
+	if count == 0 {
+		return "No issues to fix"
 	}
+	if count == 1 {
+		return "Found 1 fixable issue. Fix it?"
+	}
+	return fmt.Sprintf("Found %d fixable issues. Fix them?", count)
+}
+
+func FixDryRunHeader() string {
+	return "Dry run - no changes will be made"
+}
+
+func FixInteractiveHeader() string {
+	return "Interactive mode - confirm each fix"
 }
 
