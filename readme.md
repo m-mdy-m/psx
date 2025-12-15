@@ -49,15 +49,6 @@ or fix stuff one by one (asks you first):
 psx fix --interactive
 ```
 
-## config
-
-just init with a template:
-```bash
-psx init --template node    # for nodejs projects
-psx init --template go      # for go projects
-# etc
-```
-
 ## examples
 
 ### check a nodejs project
@@ -80,27 +71,6 @@ psx fix
 # asks which license you want
 ```
 
-## what it checks
-
-basic stuff:
-- README.md exists?
-- LICENSE file?
-- .gitignore setup?
-- source folder (src/ or whatever)?
-- tests folder?
-
-depending on project type:
-- **nodejs**: package.json valid? dependencies ok?
-- **go**: go.mod exists? properly formatted?
-- **rust**: Cargo.toml good?
-- **python**: requirements.txt or pyproject.toml?
-
-optional stuff (warnings):
-- docs/ folder
-- CI/CD configs (.github/workflows)
-- ADR documents
-- pre-commit hooks
-
 ## why i made this
 
 i kept forgetting to add READMEs and licenses to my projects lol. also wanted something simple that just works without tons of config.
@@ -111,7 +81,7 @@ sure, send PRs. check CONTRIBUTING.md if you care about that stuff.
 
 ## license
 
-MIT - do whatever you want
+[MIT](./LICENSE) - do whatever you want
 
 ## issues?
 
