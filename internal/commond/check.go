@@ -10,6 +10,7 @@ import (
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/logger"
 	"github.com/m-mdy-m/psx/internal/reporter"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
 	"github.com/m-mdy-m/psx/internal/shared"
 )
@@ -61,10 +62,10 @@ func runCheckCommand(cmd *cobra.Command, args []string) error {
 	f := flags.GetFlags()
 
 	// Verbose output
-	logger.Verbose(shared.VerboseCheckStart(ctx.Path.Abs))
-	logger.Verbose(shared.VerboseDetected(ctx.Detection.Type.Primary))
-	logger.Verbose(shared.VerboseRulesLoaded(len(ctx.Config.ActiveRules)))
-	logger.Verbose(shared.VerboseConfigLoaded(ctx.Config.Path))
+	logger.Verbose(resources.CheckStart(ctx.Path.Abs))
+	logger.Verbose(resources.VerboseDetected(ctx.Detection.Type.Primary))
+	logger.Verbose(resources.VerboseRulesLoaded(len(ctx.Config.ActiveRules)))
+	logger.Verbose(resources.VerboseConfigLoaded(ctx.Config.Path))
 
 	// Execute rules
 	engine := rules.NewEngine(ctx.Config, ctx.Detection)
@@ -110,4 +111,3 @@ func determineExitCode(result *rules.ExecutionResult, failOn string) error {
 
 	return nil
 }
-

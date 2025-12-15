@@ -9,8 +9,8 @@ import (
 	"github.com/m-mdy-m/psx/internal/fixer"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/shared"
 )
 
 var FixCmd = &cobra.Command{
@@ -62,13 +62,13 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 	f := flags.GetFlags()
 
 	if f.Fix.DryRun {
-		logger.Info(shared.FixDryRunHeader())
+		logger.Info(resources.FixDryRun())
 	} else if f.Fix.Interactive {
-		logger.Info(shared.FixInteractiveHeader())
+		logger.Info(resources.FixInteractive())
 	}
 	fmt.Println()
 
-	logger.Verbose(shared.VerboseCheckStart(ctx.Path.Abs))
+	logger.Verbose(resources.CheckStart(ctx.Path.Abs))
 
 	engine := rules.NewEngine(ctx.Config, ctx.Detection)
 	execResult, err := engine.Execute()
@@ -80,11 +80,11 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 	fixableRules := fixer.GetFixableFails(execResult, ctx.Config)
 
 	if len(fixableRules) == 0 {
-		logger.Success(shared.FixSuccess(0))
+		logger.Success(resources.FixSuccess(0))
 		return nil
 	}
 
-	logger.Info(shared.FixPrompt(len(fixableRules)))
+	logger.Info(resources.FixPrompt(len(fixableRules)))
 	fmt.Println()
 
 	// Handle specific rule fix
@@ -126,7 +126,7 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 
 	if summary.Fixed > 0 {
 		fmt.Println()
-		logger.Success(shared.FixSuccess(summary.Fixed))
+		logger.Success(resources.FixSuccess(summary.Fixed))
 		logger.Info("Run 'psx check' to verify")
 	}
 
@@ -171,7 +171,7 @@ func fixSpecificRule(ctx *cmdctx.ProjectContext, ruleID string) error {
 			logger.Info("Run without --dry-run to apply")
 		} else {
 			fmt.Println()
-			logger.Success(shared.FixSuccess(1))
+			logger.Success(resources.FixSuccess(1))
 		}
 	}
 
@@ -191,7 +191,7 @@ func displayFixResults(plan *fixer.FixPlan, dryRun bool) {
 		}
 
 		if fix.Fixed {
-			logger.Verbose(shared.VerboseFixApplied(fix.RuleID))
+			logger.Verbose(resources.FixApplied(fix.RuleID))
 			for _, change := range fix.Changes {
 				printChange(change, dryRun)
 			}
@@ -255,4 +255,3 @@ func displayFixSummary(summary fixer.FixSummary, dryRun bool) {
 		fmt.Printf("  Changes: %d\n", summary.Changes)
 	}
 }
-

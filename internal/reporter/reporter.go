@@ -10,8 +10,8 @@ import (
 	"github.com/m-mdy-m/psx/internal/checker"
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/flags"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/shared"
 )
 
 type Reporter struct {
@@ -153,7 +153,7 @@ func (r *Reporter) printSummary() {
 		if errors > 0 || warnings > 0 {
 			fmt.Printf("Result: %d errors, %d warnings\n", errors, warnings)
 		} else {
-			fmt.Println(shared.CheckSuccess(passed, total))
+			fmt.Println(resources.CheckSuccess(passed, total))
 		}
 	} else {
 		// Detailed summary
@@ -250,4 +250,3 @@ func getSeverityColor(severity config.Severity) *color.Color {
 	}
 	return colors[severity]
 }
-

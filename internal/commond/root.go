@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/m-mdy-m/psx/internal/flags"
+	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/shared"
 )
 
@@ -33,14 +34,14 @@ func Exec(version string) error {
 
 	// Handle help and version specially
 	if len(os.Args) == 1 {
-		shared.Help()
+		resources.HelpMain()
 		return nil
 	}
 
 	if len(os.Args) == 2 {
 		switch os.Args[1] {
 		case "--help", "-h", "help":
-			shared.Help()
+			resources.HelpMain()
 			return nil
 		case "--version", "-v", "version":
 			shared.Version(version)
@@ -99,4 +100,3 @@ func init() {
 	root.AddCommand(CheckCmd)
 	root.AddCommand(FixCmd)
 }
-
