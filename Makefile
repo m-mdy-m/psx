@@ -9,8 +9,7 @@ CMD_DIR := ./cmd/psx
 
 LDFLAGS= -ldflags "-X main.Version=$(VERSION)"
 
-all: clean build ## Clean and build the project
-
+all: clean build
 build:
 	@echo "Building PSX $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
