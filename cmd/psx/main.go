@@ -9,7 +9,7 @@ import (
 var Version = "development"
 
 func main(){
-	if err:=commond.Exce(Version); err!=nil{
+	if err:= commond.Exec(Version); err!=nil{
 		os.Exit(1)
 	}
 }
