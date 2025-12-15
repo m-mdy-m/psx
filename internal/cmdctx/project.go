@@ -5,8 +5,8 @@ import (
 	"github.com/m-mdy-m/psx/internal/detector"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/resources"
 )
-
 
 func LoadProject(args []string) (*ProjectContext, error) {
 	pathCtx, err := ResolvePath(args)
@@ -46,10 +46,16 @@ func LoadProject(args []string) (*ProjectContext, error) {
 	cfg.Project.Type = detection.Type.Primary
 	logger.Verbosef("Detected: %s", detection.Type.Primary)
 
+	// Get project info with interactive prompt if needed for fix command
+	// For check command, we use non-interactive mode
+	interactive := f.Fix.Interactive && !f.Fix.All
+	projectInfo := resources.GetProjectInfo(pathCtx.Abs, interactive)
+
 	return &ProjectContext{
-		Path:      pathCtx,
-		Config:    cfg,
-		Detection: detection,
-		Flags:     f,
+		Path:        pathCtx,
+		Config:      cfg,
+		Detection:   detection,
+		Flags:       f,
+		ProjectInfo: projectInfo,
 	}, nil
 }

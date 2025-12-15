@@ -4,6 +4,7 @@ import (
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/detector"
 	"github.com/m-mdy-m/psx/internal/flags"
+	"github.com/m-mdy-m/psx/internal/resources"
 )
 
 type PathContext struct {
@@ -12,12 +13,12 @@ type PathContext struct {
 }
 
 type ProjectContext struct {
-	Path      *PathContext
-	Config    *config.Config
-	Detection *detector.DetectionResult
-	Flags     *flags.Flags
+	Path        *PathContext
+	Config      *config.Config
+	Detection   *detector.DetectionResult
+	Flags       *flags.Flags
+	ProjectInfo *resources.ProjectInfo
 }
-
 
 type InitContext struct {
 	Path        *PathContext
@@ -25,4 +26,3 @@ type InitContext struct {
 	Flags       *flags.Flags
 	ConfigPath  string
 }
-
