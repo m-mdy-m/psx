@@ -47,13 +47,13 @@ func (e *Engine) registerFixers() {
 	e.fixes["adr"] = FixADR
 	e.fixes["contributing"] = FixContributing
 	e.fixes["api_docs"] = FixAPIDocsFolder
-	// e.fixes["security"] = FixSecurity
-	// e.fixes["code_of_conduct"] = FixCodeOfConduct
-	//e.fixes["pull_request_template"] = FixPullRequestTemplate
-	//e.fixes["issue_templates"] = FixIssueTemplates
-	//e.fixes["funding"] = FixFunding
-	//e.fixes["support"] = FixSupport
-	//e.fixes["roadmap"] = FixRoadmap
+	e.fixes["security"] = FixSecurity
+	e.fixes["code_of_conduct"] = FixCodeOfConduct
+	e.fixes["pull_request_template"] = FixPullRequestTemplate
+	e.fixes["issue_templates"] = FixIssueTemplates
+	e.fixes["funding"] = FixFunding
+	e.fixes["support"] = FixSupport
+	e.fixes["roadmap"] = FixRoadmap
 
 	// ============================================
 	// Quality Rules
