@@ -33,12 +33,6 @@ Documentation: https://github.com/m-mdy-m/psx`,
 func Exec(version string) error {
 	root.Version = version
 
-	// Handle help and version specially
-	if len(os.Args) == 1 {
-		resources.HelpMain()
-		return nil
-	}
-
 	if len(os.Args) == 2 {
 		switch os.Args[1] {
 		case "--help", "-h", "help":

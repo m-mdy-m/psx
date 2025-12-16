@@ -40,7 +40,7 @@ help:
     Examples:
       psx check
       psx fix --interactive
-      psx init --template nodejs
+      psx project show 
 
     Documentation: https://github.com/m-mdy-m/psx
 
