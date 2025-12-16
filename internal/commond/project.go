@@ -123,10 +123,8 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Load existing info if available
 	existing, _ := resources.LoadProjectInfo(pathCtx.Abs)
 
-	// Get new info interactively
 	var info *resources.ProjectInfo
 	if existing != nil {
 		logger.Info("Current information loaded. Press Enter to keep current value.")
