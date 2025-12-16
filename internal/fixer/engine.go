@@ -38,8 +38,8 @@ func (e *Engine) registerFixers() {
 	e.fixes["src_folder"] = FixSrcFolder
 	e.fixes["tests_folder"] = FixTestsFolder
 	e.fixes["docs_folder"] = FixDocsFolder
-	//e.fixes["scripts_folder"] = FixScriptsFolder
-	//e.fixes["env_example"] = FixEnvExample
+	e.fixes["scripts_folder"] = FixScriptsFolder
+	e.fixes["env_example"] = FixEnvExample
 
 	// ============================================
 	// Documentation Rules
@@ -83,9 +83,9 @@ func (e *Engine) registerFixers() {
 	// ============================================
 	// CI/CD Rules
 	// ============================================
-	//e.fixes["github_actions"] = FixGitHubActions
-	//e.fixes["renovate"] = FixRenovate
-	//e.fixes["dependabot"] = FixDependabot
+	e.fixes["github_actions"] = FixGitHubActions
+	e.fixes["renovate"] = FixRenovate
+	e.fixes["dependabot"] = FixDependabot
 }
 
 func (e *Engine) CanFix(ruleID string) bool {

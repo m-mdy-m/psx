@@ -51,7 +51,7 @@ func LoadProject(args []string) (*ProjectContext, error) {
 		interactive = true
 	}
 
-	projectInfo := resources.GetProjectInfo(pathCtx.Abs, interactive)
+	projectInfo := resources.GetOrCreateProjectInfo(pathCtx.Abs, interactive)
 
 	if projectInfo == nil {
 		logger.Warning("Could not get project info, using defaults")
@@ -59,6 +59,8 @@ func LoadProject(args []string) (*ProjectContext, error) {
 			Name:       detection.Type.Primary,
 			CurrentDir: pathCtx.Abs,
 		}
+		projectInfo.SetDefaults()
+		projectInfo.BuildDerivedFields()
 	}
 
 	return &ProjectContext{

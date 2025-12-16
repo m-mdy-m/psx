@@ -20,6 +20,7 @@ programming languages and frameworks.
 Examples:
   psx check                  # Validate current project
   psx fix --interactive      # Fix issues with confirmation
+  psx project show           # Show cached project info
 
 Documentation: https://github.com/m-mdy-m/psx`,
 	Version:           "", // Set in Exec()
@@ -99,4 +100,5 @@ func init() {
 	// Add all commands
 	root.AddCommand(CheckCmd)
 	root.AddCommand(FixCmd)
+	root.AddCommand(ProjectCmd)
 }

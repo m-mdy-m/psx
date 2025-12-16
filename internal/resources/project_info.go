@@ -41,14 +41,14 @@ func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 
 	// Get info interactively if needed
 	if interactive {
-		info.promptUser()
+		info.PromptUser()
 	} else {
 		// Use defaults if not interactive
-		info.setDefaults()
+		info.SetDefaults()
 	}
 
 	// Build derived fields
-	info.buildDerivedFields()
+	info.BuildDerivedFields()
 
 	return info
 }
@@ -254,7 +254,7 @@ func (p *ProjectInfo) loadFromPyprojectToml(path string) {
 	}
 }
 
-func (p *ProjectInfo) promptUser() {
+func (p *ProjectInfo) PromptUser() {
 	fmt.Println("Let's set up your project information:")
 	fmt.Println()
 
@@ -293,7 +293,7 @@ func (p *ProjectInfo) promptUser() {
 	p.License = shared.PromptInput("License", p.License)
 }
 
-func (p *ProjectInfo) setDefaults() {
+func (p *ProjectInfo) SetDefaults() {
 	// Set defaults for missing fields
 	if p.Name == "" {
 		p.Name = filepath.Base(p.CurrentDir)
@@ -324,7 +324,7 @@ func (p *ProjectInfo) setDefaults() {
 	}
 }
 
-func (p *ProjectInfo) buildDerivedFields() {
+func (p *ProjectInfo) BuildDerivedFields() {
 	// Build repo URL
 	if p.GitHubUser != "" && p.RepoName != "" {
 		p.RepoURL = fmt.Sprintf("https://github.com/%s/%s", p.GitHubUser, p.RepoName)
@@ -369,7 +369,7 @@ func (p *ProjectInfo) ToVars() map[string]string {
 			RepoName:    "my-project",
 			License:     "MIT",
 		}
-		p.buildDerivedFields()
+		p.BuildDerivedFields()
 	}
 
 	vars := getCurrentVars()
