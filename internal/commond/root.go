@@ -27,7 +27,6 @@ Documentation: https://github.com/m-mdy-m/psx`,
 	SilenceUsage:      true,
 	SilenceErrors:     true,
 	PersistentPreRun:  preRun,
-	PersistentPostRun: postRun,
 }
 
 func Exec(version string) error {
@@ -62,9 +61,6 @@ func preRun(cmd *cobra.Command, args []string) {
 	}
 }
 
-func postRun(cmd *cobra.Command, args []string) {
-	// Cleanup if needed
-}
 
 func initGlobalFlags() {
 	f := flags.GetFlags()
