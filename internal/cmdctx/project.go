@@ -46,10 +46,20 @@ func LoadProject(args []string) (*ProjectContext, error) {
 	cfg.Project.Type = detection.Type.Primary
 	logger.Verbosef("Detected: %s", detection.Type.Primary)
 
-	// Get project info with interactive prompt if needed for fix command
-	// For check command, we use non-interactive mode
-	interactive := f.Fix.Interactive && !f.Fix.All
+	interactive := false
+	if f.Fix.Interactive || f.Fix.All {
+		interactive = true
+	}
+
 	projectInfo := resources.GetProjectInfo(pathCtx.Abs, interactive)
+
+	if projectInfo == nil {
+		logger.Warning("Could not get project info, using defaults")
+		projectInfo = &resources.ProjectInfo{
+			Name:       detection.Type.Primary,
+			CurrentDir: pathCtx.Abs,
+		}
+	}
 
 	return &ProjectContext{
 		Path:        pathCtx,

@@ -92,7 +92,11 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 		return fixSpecificRule(ctx, f.Fix.RuleID)
 	}
 
-	// Create fixer context
+	if ctx.ProjectInfo == nil {
+		logger.Warning("Project info is nil, this shouldn't happen")
+		return fmt.Errorf("project info not initialized")
+	}
+
 	fixerCtx := &fixer.FixContext{
 		ProjectPath:   ctx.Path.Abs,
 		ProjectType:   ctx.Detection.Type.Primary,
@@ -100,12 +104,11 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 		Interactive:   f.Fix.Interactive && !f.Fix.All,
 		DryRun:        f.Fix.DryRun,
 		CreateBackups: f.Fix.CreateBackups,
+		ProjectInfo:   ctx.ProjectInfo,
 	}
 
-	// Create fixer engine
 	fixEngine := fixer.NewEngine(fixerCtx)
 
-	// Apply fixes
 	plan, err := fixEngine.FixAll(fixableRules)
 	if err != nil {
 		return fmt.Errorf("fix failed: %w", err)
@@ -136,6 +139,12 @@ func runFixCommand(cmd *cobra.Command, args []string) error {
 func fixSpecificRule(ctx *cmdctx.ProjectContext, ruleID string) error {
 	f := flags.GetFlags()
 
+	// Ensure ProjectInfo is not nil
+	if ctx.ProjectInfo == nil {
+		logger.Warning("Project info is nil, this shouldn't happen")
+		return fmt.Errorf("project info not initialized")
+	}
+
 	fixerCtx := &fixer.FixContext{
 		ProjectPath:   ctx.Path.Abs,
 		ProjectType:   ctx.Detection.Type.Primary,
@@ -143,6 +152,7 @@ func fixSpecificRule(ctx *cmdctx.ProjectContext, ruleID string) error {
 		Interactive:   f.Fix.Interactive,
 		DryRun:        f.Fix.DryRun,
 		CreateBackups: f.Fix.CreateBackups,
+		ProjectInfo:   ctx.ProjectInfo, // Pass ProjectInfo
 	}
 
 	fixEngine := fixer.NewEngine(fixerCtx)

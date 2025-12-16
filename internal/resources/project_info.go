@@ -358,6 +358,20 @@ func (p *ProjectInfo) buildDerivedFields() {
 
 // ToVars converts ProjectInfo to template variables
 func (p *ProjectInfo) ToVars() map[string]string {
+	// Handle nil pointer
+	if p == nil {
+		p = &ProjectInfo{
+			Name:        "my-project",
+			Description: "A project",
+			Author:      "Your Name",
+			Email:       "email@example.com",
+			GitHubUser:  "yourusername",
+			RepoName:    "my-project",
+			License:     "MIT",
+		}
+		p.buildDerivedFields()
+	}
+
 	vars := getCurrentVars()
 
 	vars["project_name"] = p.Name
