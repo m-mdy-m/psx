@@ -30,7 +30,6 @@ func init() {
 		os.Exit(1)
 	}
 	logger.Verbose(fmt.Sprintf("Loaded %d rules from metadata", len(globalMetadata.Rules)))
-
 	defaultConfig, err = LoadDefaultConfig()
 	if err != nil {
 		logger.Errorf("Failed to load default config: %v", err)
@@ -78,36 +77,35 @@ func Load(cf string, pp string) (*Config, error) {
 		userConfig *Config
 	)
 
-	// If no config file specified, search for it
+	// Find config file if not specified
 	if cf == "" {
 		logger.Verbose("Searching for config file...")
 		found, err := FindConfigFile(pp)
-		if err != nil {
-			logger.Verbose(fmt.Sprintf("No config file found: %v", err))
-			logger.Info("Using default configuration")
-			return buildConfig(defaultConfig, pp)
+		if err != nil || found == "" {
+			logger.Info("No config file found, using default")
+			return buildConfig(defaultConfig, pp, true)
 		}
 		cf = found
 		logger.Verbose(fmt.Sprintf("Found config file: %s", cf))
 	}
 
-	// Try to read user config
-	logger.Verbose(fmt.Sprintf("Loading config from: %s", cf))
+	// Read user config
 	userConfig, err = ReadYamlFile(cf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config from %s: %w", cf, err)
 	}
 
-	// Validate config
+	logger.Verbose(fmt.Sprintf("Loaded user config from: %s", cf))
+
+	// Validate
 	result := Validate(userConfig)
 
 	if HasWarnings(result) {
 		logger.Warning("Configuration warnings:")
-		for _, warning := range result.Warnings {
-			logger.Warning("  " + warning)
+		for _, warnings := range result.Warnings {
+			logger.Warning(warnings)
 		}
 	}
-
 	if !IsValid(result) {
 		logger.Error("Configuration validation failed:")
 		for _, err := range result.Errors {
@@ -117,9 +115,7 @@ func Load(cf string, pp string) (*Config, error) {
 	}
 
 	logger.Success("Configuration loaded and validated")
-	logger.Verbose(fmt.Sprintf("Config path: %s", cf))
-
-	return buildConfig(userConfig, pp)
+	return buildConfig(userConfig, pp, false)
 }
 
 func FindConfigFile(pp string) (string, error) {
@@ -130,58 +126,68 @@ func FindConfigFile(pp string) (string, error) {
 		".psx.yaml",
 	}
 
-	logger.Verbose(fmt.Sprintf("Searching for config in: %s", pp))
+	logger.Verbose(fmt.Sprintf("Looking for config in: %s", pp))
+
+	// Check current directory first
 	for _, name := range candidates {
 		path := filepath.Join(pp, name)
-		logger.Verbose(fmt.Sprintf("  Checking: %s", path))
-		if _, err := os.Stat(path); err == nil {
-			logger.Verbose(fmt.Sprintf("  Found: %s", path))
-			return path, nil
-		}
-	}
-
-	logger.Verbose("Searching upwards for .git directory...")
-	current := pp
-	for {
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-
-		gitPath := filepath.Join(current, ".git")
-		if _, err := os.Stat(gitPath); err == nil {
-			logger.Verbose(fmt.Sprintf("Found .git at: %s", current))
-			for _, name := range candidates {
-				path := filepath.Join(current, name)
-				logger.Verbose(fmt.Sprintf("  Checking: %s", path))
-				if _, err := os.Stat(path); err == nil {
-					logger.Verbose(fmt.Sprintf("  Found: %s", path))
-					return path, nil
-				}
-			}
-			break
-		}
-		current = parent
-	}
-
-	home, err := os.UserHomeDir()
-	if err == nil {
-		configDir := filepath.Join(home, ".config", "psx")
-		logger.Verbose(fmt.Sprintf("Checking home config: %s", configDir))
-		for _, name := range candidates {
-			path := filepath.Join(configDir, name)
-			logger.Verbose(fmt.Sprintf("  Checking: %s", path))
-			if _, err := os.Stat(path); err == nil {
-				logger.Verbose(fmt.Sprintf("  Found: %s", path))
+		logger.Verbose(fmt.Sprintf("Checking: %s", path))
+		if info, err := os.Stat(path); err == nil {
+			if !info.IsDir() {
+				logger.Verbose(fmt.Sprintf("Found config: %s", path))
 				return path, nil
 			}
 		}
 	}
 
+	// Check parent directories up to git root
+	current := pp
+	maxDepth := 10 // Prevent infinite loop
+	depth := 0
+
+	for depth < maxDepth {
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+
+		// Check if this is git root
+		gitPath := filepath.Join(current, ".git")
+		if info, err := os.Stat(gitPath); err == nil && info.IsDir() {
+			logger.Verbose(fmt.Sprintf("Found git root: %s", current))
+			for _, name := range candidates {
+				path := filepath.Join(current, name)
+				if info, err := os.Stat(path); err == nil && !info.IsDir() {
+					logger.Verbose(fmt.Sprintf("Found config in git root: %s", path))
+					return path, nil
+				}
+			}
+			break
+		}
+
+		current = parent
+		depth++
+	}
+
+	// Check home directory as last resort
+	home, err := os.UserHomeDir()
+	if err == nil {
+		cdir := filepath.Join(home, ".config", "psx")
+		logger.Verbose(fmt.Sprintf("Checking home config dir: %s", cdir))
+		for _, name := range candidates {
+			path := filepath.Join(cdir, name)
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				logger.Verbose(fmt.Sprintf("Found config in home: %s", path))
+				return path, nil
+			}
+		}
+	}
+
+	logger.Verbose("No config file found")
 	return "", fmt.Errorf("no config file found")
 }
 
-func buildConfig(uc *Config, pp string) (*Config, error) {
+func buildConfig(uc *Config, pp string, isDefault bool) (*Config, error) {
 	config := &Config{
 		Version:     uc.Version,
 		Project:     uc.Project,
@@ -195,51 +201,79 @@ func buildConfig(uc *Config, pp string) (*Config, error) {
 	enabledCount := 0
 	disabledCount := 0
 
-	for id, meta := range globalMetadata.Rules {
-		var userSev any
-		if uc.Rules != nil {
-			if val, exists := uc.Rules[id]; exists {
-				userSev = val
+	// If using default config, enable ALL rules from metadata
+	if isDefault {
+		logger.Verbose("Using default config - enabling all rules")
+		for id, meta := range globalMetadata.Rules {
+			severity := meta.DefaultSeverity
+			config.ActiveRules[id] = &ActiveRule{
+				ID:       id,
+				Metadata: meta,
+				Severity: severity,
 			}
+			enabledCount++
+			logger.Verbose(fmt.Sprintf("Rule %s enabled (default) with severity: %s", id, severity))
+		}
+	} else {
+		// User config: ONLY enable rules explicitly listed in config
+		logger.Verbose("Using user config - enabling only specified rules")
+
+		if uc.Rules == nil || len(uc.Rules) == 0 {
+			logger.Warning("No rules configured in user config")
+			return config, nil
 		}
 
-		severity, err := ParseSeverity(userSev, meta.DefaultSeverity)
-		if err != nil {
-			logger.Warning(fmt.Sprintf("Rule %s: %v, using default (%s)", id, err, meta.DefaultSeverity))
-			severity = &meta.DefaultSeverity
-		}
+		for id, userSev := range uc.Rules {
+			// Get metadata for this rule
+			meta, exists := globalMetadata.Rules[id]
+			if !exists {
+				logger.Warning(fmt.Sprintf("Unknown rule '%s' - skipping", id))
+				continue
+			}
 
-		if severity == nil {
-			logger.Verbose(fmt.Sprintf("Rule %s is disabled", id))
-			disabledCount++
-			continue
-		}
+			// Parse severity
+			severity, err := ParseSeverity(userSev, meta.DefaultSeverity)
+			if err != nil {
+				logger.Warning(fmt.Sprintf("Rule %s: %v, skipping", id, err))
+				continue
+			}
 
-		config.ActiveRules[id] = &ActiveRule{
-			ID:       id,
-			Metadata: meta,
-			Severity: *severity,
+			// If severity is nil, rule is disabled
+			if severity == nil {
+				logger.Verbose(fmt.Sprintf("Rule %s is disabled", id))
+				disabledCount++
+				continue
+			}
+
+			// Enable rule
+			config.ActiveRules[id] = &ActiveRule{
+				ID:       id,
+				Metadata: meta,
+				Severity: *severity,
+			}
+			enabledCount++
+			logger.Verbose(fmt.Sprintf("Rule %s enabled with severity: %s", id, *severity))
 		}
-		enabledCount++
-		logger.Verbose(fmt.Sprintf("Rule %s enabled with severity: %s", id, *severity))
 	}
 
 	logger.Verbose(fmt.Sprintf("Config built: %d enabled, %d disabled rules", enabledCount, disabledCount))
 	return config, nil
 }
 
-func ReadYamlFile(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+func ReadYamlFile(args string) (*Config, error) {
+	data, err := os.ReadFile(args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+
+	if err := yaml.Unmarshal([]byte(data), &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
-	logger.Verbose(fmt.Sprintf("Successfully parsed YAML from %s", path))
+	logger.Verbose(fmt.Sprintf("Successfully parsed YAML from %s", args))
+
 	return &cfg, nil
 }
 

@@ -158,3 +158,15 @@ type ProjectInfo struct {
 	SecurityEmail string
 	CurrentDir    string
 }
+
+type ProjectCache struct {
+	ProjectInfo *ProjectInfo    `yaml:"project_info"`
+	Detection   *DetectionCache `yaml:"detection"`
+}
+
+type DetectionCache struct {
+	ProjectType string          `yaml:"project_type"`
+	Version     string          `yaml:"version,omitempty"`
+	Features    map[string]bool `yaml:"features,omitempty"`
+	Files       []string        `yaml:"files,omitempty"`
+}

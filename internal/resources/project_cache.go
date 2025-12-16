@@ -11,12 +11,68 @@ import (
 
 const projectCacheFile = ".psx-project.yml"
 
-func SaveProjectInfo(projectPath string, info *ProjectInfo) error {
+
+func SaveProjectCache(projectPath string, info *ProjectInfo, detectionType string, version string, features map[string]bool, files []string) error {
 	cachePath := filepath.Join(projectPath, projectCacheFile)
 
-	data, err := yaml.Marshal(info)
+	cache := &ProjectCache{
+		ProjectInfo: info,
+		Detection: &DetectionCache{
+			ProjectType: detectionType,
+			Version:     version,
+			Features:    features,
+			Files:       files,
+		},
+	}
+
+	data, err := yaml.Marshal(cache)
 	if err != nil {
-		return fmt.Errorf("failed to marshal project info: %w", err)
+		return fmt.Errorf("failed to marshal project cache: %w", err)
+	}
+
+	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write cache file: %w", err)
+	}
+
+	logger.Verbose(fmt.Sprintf("Project cache saved to %s", cachePath))
+	return nil
+}
+
+func LoadProjectCache(projectPath string) (*ProjectCache, error) {
+	cachePath := filepath.Join(projectPath, projectCacheFile)
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // Cache doesn't exist yet
+		}
+		return nil, fmt.Errorf("failed to read cache file: %w", err)
+	}
+
+	var cache ProjectCache
+	if err := yaml.Unmarshal(data, &cache); err != nil {
+		return nil, fmt.Errorf("failed to parse cache file: %w", err)
+	}
+
+	logger.Verbose(fmt.Sprintf("Project cache loaded from %s", cachePath))
+	return &cache, nil
+}
+
+func SaveProjectInfo(projectPath string, info *ProjectInfo) error {
+	cache, _ := LoadProjectCache(projectPath)
+	if cache == nil {
+		cache = &ProjectCache{
+			ProjectInfo: info,
+			Detection:   &DetectionCache{},
+		}
+	} else {
+		cache.ProjectInfo = info
+	}
+
+	cachePath := filepath.Join(projectPath, projectCacheFile)
+	data, err := yaml.Marshal(cache)
+	if err != nil {
+		return fmt.Errorf("failed to marshal project cache: %w", err)
 	}
 
 	if err := os.WriteFile(cachePath, data, 0644); err != nil {
@@ -28,23 +84,14 @@ func SaveProjectInfo(projectPath string, info *ProjectInfo) error {
 }
 
 func LoadProjectInfo(projectPath string) (*ProjectInfo, error) {
-	cachePath := filepath.Join(projectPath, projectCacheFile)
-
-	data, err := os.ReadFile(cachePath)
+	cache, err := LoadProjectCache(projectPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil // Cache doesn't exist yet
-		}
-		return nil, fmt.Errorf("failed to read cache file: %w", err)
+		return nil, err
 	}
-
-	var info ProjectInfo
-	if err := yaml.Unmarshal(data, &info); err != nil {
-		return nil, fmt.Errorf("failed to parse cache file: %w", err)
+	if cache == nil || cache.ProjectInfo == nil {
+		return nil, nil
 	}
-
-	logger.Verbose(fmt.Sprintf("Project info loaded from %s", cachePath))
-	return &info, nil
+	return cache.ProjectInfo, nil
 }
 
 func GetOrCreateProjectInfo(projectPath string, interactive bool) *ProjectInfo {
@@ -58,6 +105,7 @@ func GetOrCreateProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 		cached.CurrentDir = projectPath
 		return cached
 	}
+
 	logger.Verbose("No cached project info found, collecting information...")
 	info := GetProjectInfo(projectPath, interactive)
 	if err := SaveProjectInfo(projectPath, info); err != nil {
