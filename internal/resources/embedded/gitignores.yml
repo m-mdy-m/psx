@@ -11,6 +11,9 @@ common: |
   .DS_Store
   Thumbs.db
 
+  # PSX cache
+  .psx-project.yml
+
 nodejs: |
   # Node.js
   node_modules/

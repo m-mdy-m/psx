@@ -1,31 +1,78 @@
 # PSX Default Configuration
 # Version 1.0.0
 version: 1
+
 # Project detection (auto-detect if empty)
 project:
   type: ""  # nodejs, go, rust, python, java - empty = auto-detect
+
 # Rules configuration
 # Severity: "error" | "warning" | "info" | false (disabled)
 rules:
-  # General rules
+  # ============================================
+  # General Rules
+  # ============================================
   readme: error
   license: warning
   gitignore: warning
   changelog: info
-  # Structure rules
+
+  # ============================================
+  # Structure Rules
+  # ============================================
   src_folder: warning
   tests_folder: error
   docs_folder: info
-  # Documentation rules
-  adr: false
+  scripts_folder: info
+  env_example: info
+
+  # ============================================
+  # Documentation Rules
+  # ============================================
+  adr: info
   contributing: info
-  api_docs: warning  # Only for libraries
-  # CI/CD rules
+  api_docs: warning
+  security: info
+  code_of_conduct: info
+  pull_request_template: info
+  issue_templates: info
+  funding: false
+  support: info
+  roadmap: info
+
+  # ============================================
+  # CI/CD Rules
+  # ============================================
   ci_config: info
-  # Quality rules␍
+  github_actions: info
+  renovate: info
+  dependabot: info
+
+  # ============================================
+  # Quality Rules
+  # ============================================
   pre_commit: info
-  editorconfig: false
-  code_owners: false
+  editorconfig: info
+  code_owners: info
+  prettier: info
+  prettierignore: info
+  eslint: info
+  commitlint: info
+  husky: info
+  lint_staged: info
+  makefile: info
+  gitattributes: info
+
+  # ============================================
+  # DevOps Rules
+  # ============================================
+  dockerfile: info
+  dockerignore: info
+  docker_compose: info
+  kubernetes: info
+  nginx_config: info
+  infra_folder: info
+
 # Ignore patterns (like .gitignore)
 ignore:
   - node_modules/
@@ -34,8 +81,9 @@ ignore:
   - dist/
   - build/
   - coverage/
+  - .psx-project.yml 
 
 # Fix behavior
 fix:
-  interactive: true          # Ask before each fix
-  backup: false      # Create .backup files
+  interactive: true
+  backup: false
