@@ -45,7 +45,7 @@ func askUser(ctx *FixContext, prompt string) bool {
 	return shared.Prompt(prompt)
 }
 
-func formatContent(content string, doFormat bool) string {
+func format(content string, doFormat bool) string {
 	if !doFormat {
 		return content
 	}
@@ -85,7 +85,7 @@ func FixSingleFile(ctx *FixContext, spec FileFixSpec) (*FixResult, error) {
 		if spec.GetContent != nil {
 			c, err := spec.GetContent(ctx)
 			if err == nil {
-				content = formatContent(c, spec.FormatForDry)
+				content = format(c, spec.FormatForDry)
 			}
 		}
 
@@ -179,7 +179,7 @@ func FixFolder(ctx *FixContext, spec FolderFixSpec) (*FixResult, error) {
 			content := ""
 			if f.GetContent != nil && f.FormatForDry {
 				if c, err := f.GetContent(ctx); err == nil {
-					content = formatContent(c, f.FormatForDry)
+					content = format(c, f.FormatForDry)
 				}
 			}
 			changes = append(changes, Change{
