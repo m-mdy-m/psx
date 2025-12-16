@@ -10,24 +10,6 @@ import (
 	"github.com/m-mdy-m/psx/internal/shared"
 )
 
-// ProjectInfo holds information about the project
-type ProjectInfo struct {
-	Name          string
-	Description   string
-	Author        string
-	Email         string
-	GitHubUser    string
-	RepoName      string
-	RepoURL       string
-	License       string
-	Domain        string
-	DockerImage   string
-	SupportEmail  string
-	SecurityEmail string
-	CurrentDir    string
-}
-
-// GetProjectInfo collects project information from various sources and user input
 func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 	info := &ProjectInfo{
 		CurrentDir: projectPath,
@@ -294,7 +276,6 @@ func (p *ProjectInfo) PromptUser() {
 }
 
 func (p *ProjectInfo) SetDefaults() {
-	// Set defaults for missing fields
 	if p.Name == "" {
 		p.Name = filepath.Base(p.CurrentDir)
 	}
@@ -356,17 +337,16 @@ func (p *ProjectInfo) BuildDerivedFields() {
 	}
 }
 
-// ToVars converts ProjectInfo to template variables
 func (p *ProjectInfo) ToVars() map[string]string {
 	// Handle nil pointer
 	if p == nil {
 		p = &ProjectInfo{
-			Name:        "my-project",
-			Description: "A project",
-			Author:      "Your Name",
-			Email:       "email@example.com",
-			GitHubUser:  "yourusername",
-			RepoName:    "my-project",
+			Name:        "psx",
+			Description: "Project structure analysis",
+			Author:      "Genix",
+			Email:       "bitsgenix@email.com",
+			GitHubUser:  "m-mdy-m",
+			RepoName:    "psx",
 			License:     "MIT",
 		}
 		p.BuildDerivedFields()
@@ -391,8 +371,6 @@ func (p *ProjectInfo) ToVars() map[string]string {
 
 	return vars
 }
-
-// Helper functions
 
 func parseGitHubUserFromRemote(remote string) string {
 	// git@github.com:user/repo.git -> user
@@ -423,7 +401,6 @@ func parseGitHubUserFromURL(url string) string {
 	return ""
 }
 
-// runCommand runs a command and returns its output
 func runCommand(name string, args ...string) string {
 	cmd := exec.Command(name, args...)
 	output, err := cmd.Output()
@@ -453,7 +430,6 @@ func parseRepoNameFromURL(url string) string {
 }
 
 func extractJSONField(content, field string) string {
-	// Simple extraction - in production use json.Unmarshal
 	pattern := fmt.Sprintf(`"%s"\s*:\s*"([^"]*)"`, field)
 	return extractPattern(content, pattern)
 }
@@ -469,8 +445,6 @@ func extractPythonStringArg(content, field string) string {
 }
 
 func extractPattern(content, pattern string) string {
-	// Simple regex-like extraction
-	// In production, use regexp package
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, pattern) {

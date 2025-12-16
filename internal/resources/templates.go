@@ -108,10 +108,6 @@ func ListLicenses() []string {
 	return result
 }
 
-// ============================================
-// Quality Tools Templates
-// ============================================
-
 func GetEditorconfig(projectType string) string {
 	if config, ok := qualityTools.Editorconfig[projectType]; ok {
 		return config
@@ -174,13 +170,9 @@ func GetMakefile(projectType string) string {
 	return ""
 }
 
-// ============================================
-// DevOps Templates
-// ============================================
-
 func GetDockerfile(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	var template string
 	switch projectType {
 	case "nodejs":
@@ -194,7 +186,7 @@ func GetDockerfile(info *ProjectInfo, projectType string) string {
 	default:
 		return ""
 	}
-	
+
 	return replaceVars(template, vars)
 }
 
@@ -215,14 +207,14 @@ func GetDockerignore(projectType string) string {
 
 func GetDockerCompose(info *ProjectInfo, withDB bool) string {
 	vars := info.ToVars()
-	
+
 	var template string
 	if withDB {
 		template = devops.DockerCompose["with_db"]
 	} else {
 		template = devops.DockerCompose["basic"]
 	}
-	
+
 	return replaceVars(template, vars)
 }
 
@@ -243,7 +235,7 @@ func GetKubernetesIngress(info *ProjectInfo) string {
 
 func GetNginxConfig(info *ProjectInfo, configType string) string {
 	vars := info.ToVars()
-	
+
 	var template string
 	switch configType {
 	case "static":
@@ -253,13 +245,13 @@ func GetNginxConfig(info *ProjectInfo, configType string) string {
 	default:
 		template = devops.Nginx["static"]
 	}
-	
+
 	return replaceVars(template, vars)
 }
 
 func GetGitHubActionsCI(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	var template string
 	switch projectType {
 	case "nodejs":
@@ -269,7 +261,7 @@ func GetGitHubActionsCI(info *ProjectInfo, projectType string) string {
 	default:
 		return ""
 	}
-	
+
 	return replaceVars(template, vars)
 }
 
@@ -285,18 +277,13 @@ func GetRenovateConfig() string {
 func GetDependabotConfig(projectType string) string {
 	// Base config
 	config := devops.Dependabot["config"]
-	
-	// Add language-specific config
+
 	if langConfig, ok := devops.Dependabot[projectType]; ok {
 		config += "\n" + langConfig
 	}
-	
+
 	return config
 }
-
-// ============================================
-// Documentation Templates
-// ============================================
 
 func GetSecurity(info *ProjectInfo) string {
 	vars := info.ToVars()
@@ -361,13 +348,9 @@ func GetEnvExample(projectType string) string {
 	return docsTemplates.EnvExample["generic"]
 }
 
-// ============================================
-// Scripts Templates
-// ============================================
-
 func GetInstallScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	// Add install command based on project type
 	switch projectType {
 	case "nodejs":
@@ -386,7 +369,7 @@ func GetInstallScript(info *ProjectInfo, projectType string) string {
 		vars["install_command"] = "make install"
 		vars["start_command"] = "make start"
 	}
-	
+
 	return replaceVars(scripts.Install["unix"], vars)
 }
 
@@ -399,7 +382,7 @@ func GetSetupScript(projectType string) string {
 
 func GetTestScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["test_command"] = "npm test"
@@ -412,13 +395,13 @@ func GetTestScript(info *ProjectInfo, projectType string) string {
 	default:
 		vars["test_command"] = "make test"
 	}
-	
+
 	return replaceVars(scripts.Test["unix"], vars)
 }
 
 func GetBuildScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["build_dir"] = "dist"
@@ -436,13 +419,13 @@ func GetBuildScript(info *ProjectInfo, projectType string) string {
 		vars["build_dir"] = "build"
 		vars["build_command"] = "make build"
 	}
-	
+
 	return replaceVars(scripts.Build["unix"], vars)
 }
 
 func GetDeployScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["build_command"] = "npm run build"
@@ -457,13 +440,13 @@ func GetDeployScript(info *ProjectInfo, projectType string) string {
 		vars["test_command"] = "make test"
 		vars["deploy_command"] = "make deploy"
 	}
-	
+
 	return replaceVars(scripts.Deploy["unix"], vars)
 }
 
 func GetReleaseScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["test_command"] = "npm test"
@@ -478,7 +461,7 @@ func GetReleaseScript(info *ProjectInfo, projectType string) string {
 		vars["build_command"] = "make build"
 		vars["version_update_command"] = "echo ${VERSION} > VERSION"
 	}
-	
+
 	return replaceVars(scripts.Release["unix"], vars)
 }
 
@@ -489,7 +472,7 @@ func GetDockerBuildScript(info *ProjectInfo) string {
 
 func GetCleanScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["build_dirs"] = "dist/ build/ .next/ out/"
@@ -507,13 +490,13 @@ func GetCleanScript(info *ProjectInfo, projectType string) string {
 		vars["build_dirs"] = "build/ dist/"
 		vars["cache_dirs"] = ".cache/"
 	}
-	
+
 	return replaceVars(scripts.Clean["unix"], vars)
 }
 
 func GetLintScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["lint_command"] = "npm run lint"
@@ -526,13 +509,13 @@ func GetLintScript(info *ProjectInfo, projectType string) string {
 	default:
 		vars["lint_command"] = "make lint"
 	}
-	
+
 	return replaceVars(scripts.Lint["unix"], vars)
 }
 
 func GetFormatScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["format_command"] = "npm run format"
@@ -545,13 +528,13 @@ func GetFormatScript(info *ProjectInfo, projectType string) string {
 	default:
 		vars["format_command"] = "make format"
 	}
-	
+
 	return replaceVars(scripts.Format["unix"], vars)
 }
 
 func GetDevScript(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
-	
+
 	switch projectType {
 	case "nodejs":
 		vars["deps_dir"] = "node_modules"
@@ -574,7 +557,7 @@ func GetDevScript(info *ProjectInfo, projectType string) string {
 		vars["install_command"] = "make install"
 		vars["dev_command"] = "make dev"
 	}
-	
+
 	return replaceVars(scripts.Dev["unix"], vars)
 }
 

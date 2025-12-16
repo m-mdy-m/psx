@@ -47,10 +47,6 @@ type TemplatesConfig struct {
 	Editorconfig string            `yaml:"editorconfig"`
 }
 
-// =======================
-// Quality Tools
-// =======================
-
 type QualityToolsConfig struct {
 	Editorconfig  map[string]string `yaml:"editorconfig"`
 	Prettier      PrettierConfig    `yaml:"prettier"`
@@ -81,10 +77,6 @@ type HuskyConfig struct {
 	PreCommit string `yaml:"pre_commit"`
 	CommitMsg string `yaml:"commit_msg"`
 }
-
-// =======================
-// DevOps
-// =======================
 
 type DevOpsConfig struct {
 	Docker        DockerConfig      `yaml:"docker"`
@@ -118,10 +110,6 @@ type RenovateConfig struct {
 	Config string `yaml:"config"`
 }
 
-// =======================
-// Documentation Templates
-// =======================
-
 type DocsTemplatesConfig struct {
 	Security             string            `yaml:"security"`
 	CodeOfConduct        string            `yaml:"code_of_conduct"`
@@ -139,10 +127,6 @@ type DocsTemplatesConfig struct {
 	EnvExample           map[string]string `yaml:"env_example"`
 }
 
-// =======================
-// Scripts
-// =======================
-
 type ScriptsConfig struct {
 	Install     ScriptPlatformConfig `yaml:"install"`
 	Setup       map[string]string    `yaml:"setup"`
@@ -158,3 +142,19 @@ type ScriptsConfig struct {
 }
 
 type ScriptPlatformConfig map[string]string
+
+type ProjectInfo struct {
+	Name          string
+	Description   string
+	Author        string
+	Email         string
+	GitHubUser    string
+	RepoName      string
+	RepoURL       string
+	License       string
+	Domain        string
+	DockerImage   string
+	SupportEmail  string
+	SecurityEmail string
+	CurrentDir    string
+}

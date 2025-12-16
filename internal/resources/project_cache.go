@@ -47,9 +47,7 @@ func LoadProjectInfo(projectPath string) (*ProjectInfo, error) {
 	return &info, nil
 }
 
-// GetOrCreateProjectInfo gets project info from cache or creates new one
 func GetOrCreateProjectInfo(projectPath string, interactive bool) *ProjectInfo {
-	// Try to load from cache first
 	cached, err := LoadProjectInfo(projectPath)
 	if err != nil {
 		logger.Warning(fmt.Sprintf("Failed to load project cache: %v", err))
@@ -57,15 +55,11 @@ func GetOrCreateProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 
 	if cached != nil {
 		logger.Verbose("Using cached project info")
-		cached.CurrentDir = projectPath // Update current dir
+		cached.CurrentDir = projectPath
 		return cached
 	}
-
-	// Cache doesn't exist, create new info
 	logger.Verbose("No cached project info found, collecting information...")
 	info := GetProjectInfo(projectPath, interactive)
-
-	// Save to cache for next time
 	if err := SaveProjectInfo(projectPath, info); err != nil {
 		logger.Warning(fmt.Sprintf("Failed to save project cache: %v", err))
 	}

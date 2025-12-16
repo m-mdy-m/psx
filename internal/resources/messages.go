@@ -2,25 +2,9 @@ package resources
 
 import "fmt"
 
-// Exit messages
-func ExitMessage(code string) string {
-	if msg, ok := messages.Exit[code]; ok {
-		return msg
-	}
-	return "Unknown error"
-}
-
-// Error messages
-func ErrorMessage(errType string) string {
-	if msg, ok := messages.Errors[errType]; ok {
-		return msg
-	}
-	return "An error occurred"
-}
-
 // Help message
-func HelpMain() string {
-	return messages.Help["main"]
+func HelpMain() {
+	fmt.Println(messages.Help["main"])
 }
 
 // Check messages
