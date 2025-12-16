@@ -21,7 +21,7 @@ rules:
   # Structure Rules
   # ============================================
   src_folder: warning
-  tests_folder: error
+  tests_folder: warning
   docs_folder: info
   scripts_folder: info
   env_example: info
@@ -81,7 +81,7 @@ ignore:
   - dist/
   - build/
   - coverage/
-  - .psx-project.yml 
+  - .psx-project.yml
 
 # Fix behavior
 fix:
