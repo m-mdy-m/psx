@@ -12,56 +12,25 @@ import (
 )
 
 func CheckSrcFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exist, info := shared.FileExists(fullPath)
-
-		if exist && info.IsDir() {
-			isEmpty, err := shared.IsDirEmpty(fullPath)
-			if err != nil {
-				result.Passed = false
-				result.Message = "Source folder exists but cannot check contents"
-				return result
-			}
-
-			if isEmpty {
-				result.Passed = false
-				result.Message = "Source folder exists but is empty"
-				return result
-			}
-
-			result.Passed = true
-			result.Message = "Source folder found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFolderNotEmpty(ctx, metadata)
 }
 
 func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
 	result := RuleResult{
 		Message: metadata.Message,
 		FixHint: metadata.FixHint,
 		DocURL:  metadata.DocURL,
 	}
 
+	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
+
 	for _, pattern := range patterns {
+		// Folder pattern
 		if strings.HasSuffix(pattern, "/") {
 			folderName := strings.TrimSuffix(pattern, "/")
 			fullPath := filepath.Join(ctx.ProjectPath, folderName)
 			exists, info := shared.FileExists(fullPath)
+
 			if !exists || info == nil || !info.IsDir() {
 				continue
 			}
@@ -79,26 +48,14 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 				}
 			}
 
-			// Check if folder is empty
-			empty, err := shared.IsDirEmpty(fullPath)
-			if err != nil {
-				result.Passed = false
-				result.Message = "Tests folder exists but cannot check contents"
-				return result
-			}
-			if empty {
-				result.Passed = false
-				result.Message = "Tests folder exists but contains no test files"
-				return result
-			}
-
-			// Check for actual test files
+			// Check if folder has test files
 			hasTests, err := hasTestFiles(fullPath, ctx.ProjectType)
 			if err != nil {
 				result.Passed = false
 				result.Message = "Tests folder exists but cannot check contents"
 				return result
 			}
+
 			if !hasTests {
 				result.Passed = false
 				result.Message = "Tests folder exists but contains no test files"
@@ -110,7 +67,7 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 			return result
 		}
 
-		// Wildcard pattern
+		// Wildcard pattern (e.g., **/*_test.go)
 		if strings.Contains(pattern, "*") {
 			suffix := pattern
 			parts := strings.Split(pattern, "*")
@@ -130,30 +87,32 @@ func CheckTestsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResul
 }
 
 func CheckDocsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "Documentation folder found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFolder(ctx, metadata)
 }
 
+func CheckScriptsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	return CheckFolder(ctx, metadata)
+}
+
+func CheckEnvExampleRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	return CheckFile(ctx, metadata)
+}
+
+func CheckGitHubActionsRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	return CheckFolderNotEmpty(ctx, metadata)
+}
+
+func CheckRenovateRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	return CheckFile(ctx, metadata)
+}
+
+func CheckDependabotRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
+	return CheckFile(ctx, metadata)
+}
+
+// Helper functions
+
 func hasTestFiles(path string, projectType string) (bool, error) {
-	// Get test patterns from resources
 	patterns := resources.GetTestPatterns(projectType)
 
 	entries, err := os.ReadDir(path)
@@ -181,15 +140,16 @@ func hasMatchingFiles(rootPath string, suffix string) (bool, int) {
 	found := false
 	count := 0
 
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 
 		if info.IsDir() {
 			name := info.Name()
-			if name == ".git" || name == "vendor" || name == "node_modules" || 
-			   name == "build" || name == "dist" {
+			// Skip common ignored directories
+			if name == ".git" || name == "vendor" || name == "node_modules" ||
+				name == "build" || name == "dist" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -203,132 +163,5 @@ func hasMatchingFiles(rootPath string, suffix string) (bool, int) {
 		return nil
 	})
 
-	if err != nil {
-		return false, 0
-	}
-
 	return found, count
-}
-
-
-func CheckScriptsFolderRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, info := shared.FileExists(fullPath)
-		if exists && info != nil && info.IsDir() {
-			result.Passed = true
-			result.Message = "Scripts folder found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
-}
-
-func CheckEnvExampleRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = ".env.example found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
-}
-
-// ============================================
-// CI/CD Rules
-// ============================================
-
-func CheckGitHubActionsRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, info := shared.FileExists(fullPath)
-		if exists && info != nil && info.IsDir() {
-			isEmpty, _ := shared.IsDirEmpty(fullPath)
-			if !isEmpty {
-				result.Passed = true
-				result.Message = "GitHub Actions workflows found"
-				return result
-			}
-		}
-	}
-
-	result.Passed = false
-	return result
-}
-
-func CheckRenovateRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "Renovate configuration found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
-}
-
-func CheckDependabotRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "Dependabot configuration found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
 }

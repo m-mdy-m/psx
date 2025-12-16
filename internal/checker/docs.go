@@ -1,349 +1,81 @@
 package checker
 
 import (
-	"path/filepath"
-
 	"github.com/m-mdy-m/psx/internal/config"
-	"github.com/m-mdy-m/psx/internal/shared"
 )
 
 func CheckADRRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,info := shared.FileExists(fullPath)
-		if !exists || info == nil {
-			continue
-		}
-
-		if info.IsDir() {
-			result.Passed = true
-			result.Message = "ADR folder found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFolder(ctx, metadata)
 }
+
 func CheckContributingRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,_ := shared.FileExists(fullPath)
-		if exists{
-			result.Passed = true
-			result.Message = "CONTRIBUTING file found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckAPIDocsRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,info := shared.FileExists(fullPath)
-		if exists{
-			if info.IsDir() {
-				result.Passed = true
-				result.Message = "API documentation folder found"
-				return result
+	return CheckRule(ctx, metadata, CheckSpec{
+		Validator: func(ctx *Context, fullPath string, info interface{}) (bool, string, error) {
+			fileInfo, ok := info.(interface{ IsDir() bool })
+			if ok && fileInfo.IsDir() {
+				return true, "API documentation folder found", nil
 			}
-			result.Passed = true
-			result.Message = "API documentation file found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+			return true, "API documentation file found", nil
+		},
+	})
 }
 
 func CheckCIConfigRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, info := shared.FileExists(fullPath)
-		if exists{
-			if info.IsDir() {
-				isEmpty, _ := shared.IsDirEmpty(fullPath)
-				if isEmpty {
-					continue
+	return CheckRule(ctx, metadata, CheckSpec{
+		Validator: func(ctx *Context, fullPath string, info interface{}) (bool, string, error) {
+			fileInfo, ok := info.(interface{ IsDir() bool })
+			if ok && fileInfo.IsDir() {
+				// Check if not empty
+				valid, msg, err := ValidateNotEmptyDir(ctx, fullPath, info)
+				if !valid {
+					return false, msg, err
 				}
 			}
-
-			result.Passed = true
-			result.Message = "CI/CD configuration found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+			return true, "CI/CD configuration found", nil
+		},
+	})
 }
 
 func CheckPreCommitRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,_ := shared.FileExists(fullPath)
-		if exists{
-			result.Passed = true
-			result.Message = "Pre-commit hooks configured"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckEditorconfigRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,_ := shared.FileExists(fullPath)
-		if exists{
-			result.Passed = true
-			result.Message = ".editorconfig found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckCodeOwnersRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message:  metadata.Message,
-		FixHint:  metadata.FixHint,
-		DocURL:   metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists,_ := shared.FileExists(fullPath)
-		if exists{
-			result.Passed = true
-			result.Message = "CODEOWNERS file found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
-
 func CheckSecurityRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "SECURITY.md found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckCodeOfConductRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "CODE_OF_CONDUCT.md found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckPullRequestTemplateRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "Pull request template found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckIssueTemplatesRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, info := shared.FileExists(fullPath)
-		if exists && info != nil && info.IsDir() {
-			isEmpty, _ := shared.IsDirEmpty(fullPath)
-			if !isEmpty {
-				result.Passed = true
-				result.Message = "Issue templates found"
-				return result
-			}
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFolderNotEmpty(ctx, metadata)
 }
 
 func CheckFundingRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "Funding information found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckSupportRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "SUPPORT.md found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }
 
 func CheckRoadmapRule(ctx *Context, metadata *config.RuleMetadata) RuleResult {
-	patterns := config.GetPatterns(metadata.Patterns, ctx.ProjectType)
-
-	result := RuleResult{
-		Message: metadata.Message,
-		FixHint: metadata.FixHint,
-		DocURL:  metadata.DocURL,
-	}
-
-	for _, pattern := range patterns {
-		fullPath := filepath.Join(ctx.ProjectPath, pattern)
-		exists, _ := shared.FileExists(fullPath)
-		if exists {
-			result.Passed = true
-			result.Message = "ROADMAP.md found"
-			return result
-		}
-	}
-
-	result.Passed = false
-	return result
+	return CheckFile(ctx, metadata)
 }

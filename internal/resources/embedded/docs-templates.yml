@@ -169,98 +169,163 @@ funding_yml: |
 
 # Issue Templates - Bug Report
 issue_bug_report: |
-  ---
-  name: Bug Report
-  about: Create a report to help us improve
-  title: '[BUG] '
-  labels: bug
-  assignees: ''
-  ---
+  name: 🐛 Bug Report
+  description: Create a report to help us improve
+  title: "[BUG] "
+  labels: ["bug"]
+  assignees: []
 
-  ## Describe the bug
+  body:
+    - type: markdown
+      attributes:
+        value: |
+          Thanks for taking the time to report a bug 🙏  
+          Please fill out the information below as clearly as possible.
 
-  A clear and concise description of what the bug is.
+    - type: textarea
+      id: description
+      attributes:
+        label: Describe the bug
+        description: A clear and concise description of what the bug is.
+        placeholder: |
+          When I run the command..., it crashes with...
+      validations:
+        required: true
 
-  ## To Reproduce
+    - type: textarea
+      id: reproduce
+      attributes:
+        label: To Reproduce
+        description: Steps to reproduce the behavior
+        placeholder: |
+          1. Go to '...'
+          2. Click on '...'
+          3. Scroll down to '...'
+          4. See error
+      validations:
+        required: true
 
-  Steps to reproduce the behavior:
+    - type: textarea
+      id: expected
+      attributes:
+        label: Expected behavior
+        description: What did you expect to happen?
+        placeholder: |
+          I expected it to...
+      validations:
+        required: true
 
-  1. Go to '...'
-  2. Click on '...'
-  3. Scroll down to '...'
-  4. See error
+    - type: textarea
+      id: screenshots
+      attributes:
+        label: Screenshots
+        description: If applicable, add screenshots to help explain your problem.
 
-  ## Expected behavior
+    - type: textarea
+      id: environment
+      attributes:
+        label: Environment
+        description: Please complete the following information
+        placeholder: |
+          - OS: Ubuntu 22.04
+          - Version: 1.0.0
+          - Browser: Chrome 120
 
-  A clear and concise description of what you expected to happen.
+    - type: textarea
+      id: additional
+      attributes:
+        label: Additional context
+        description: Add any other context about the problem here.
 
-  ## Screenshots
-
-  If applicable, add screenshots to help explain your problem.
-
-  ## Environment
-
-  - OS: [e.g. Ubuntu 22.04]
-  - Version: [e.g. 1.0.0]
-  - Browser (if applicable): [e.g. Chrome 120]
-
-  ## Additional context
-
-  Add any other context about the problem here.
 
 # Issue Templates - Feature Request
 issue_feature_request: |
-  ---
-  name: Feature Request
-  about: Suggest an idea for this project
-  title: '[FEATURE] '
-  labels: enhancement
-  assignees: ''
-  ---
+  name: ✨ Feature Request
+  description: Suggest an idea for this project
+  title: "[FEATURE] "
+  labels: ["enhancement"]
+  assignees: []
 
-  ## Is your feature request related to a problem?
+  body:
+    - type: markdown
+      attributes:
+        value: |
+          Thanks for suggesting a feature 💡  
+          Clear explanations help a lot!
 
-  A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    - type: textarea
+      id: problem
+      attributes:
+        label: Is your feature request related to a problem?
+        description: Describe the problem you are facing.
+        placeholder: |
+          I'm always frustrated when...
+      validations:
+        required: true
 
-  ## Describe the solution you'd like
+    - type: textarea
+      id: solution
+      attributes:
+        label: Describe the solution you'd like
+        description: What would you like to see happen?
+      validations:
+        required: true
 
-  A clear and concise description of what you want to happen.
+    - type: textarea
+      id: alternatives
+      attributes:
+        label: Describe alternatives you've considered
+        description: Any alternative solutions or features you've thought about.
 
-  ## Describe alternatives you've considered
+    - type: textarea
+      id: additional
+      attributes:
+        label: Additional context
+        description: Add any other context or screenshots here.
 
-  A clear and concise description of any alternative solutions or features you've considered.
-
-  ## Additional context
-
-  Add any other context or screenshots about the feature request here.
-
-  ## Would you like to implement this feature?
-
-  - [ ] Yes, I'd like to implement this
-  - [ ] No, but I can help with testing
-  - [ ] No, just suggesting
+    - type: checkboxes
+      id: contribution
+      attributes:
+        label: Would you like to implement this feature?
+        options:
+          - label: Yes, I'd like to implement this
+          - label: No, but I can help with testing
+          - label: No, just suggesting
 
 # Issue Templates - Question
 issue_question: |
-  ---
-  name: Question
-  about: Ask a question about the project
-  title: '[QUESTION] '
-  labels: question
-  assignees: ''
-  ---
+  name: ❓ Question
+  description: Ask a question about the project
+  title: "[QUESTION] "
+  labels: ["question"]
+  assignees: []
 
-  ## Your Question
+  body:
+    - type: markdown
+      attributes:
+        value: |
+          Have a question? You're in the right place 😊
 
-  Please describe your question clearly.
+    - type: textarea
+      id: question
+      attributes:
+        label: Your Question
+        description: Please describe your question clearly.
+      validations:
+        required: true
 
-  ## Context
+    - type: textarea
+      id: context
+      attributes:
+        label: Context
+        description: Any additional context that might help us answer your question.
 
-  Any additional context that might help us answer your question.
+    - type: textarea
+      id: tried
+      attributes:
+        label: What have you tried?
+        description: Describe what you've already tried or where you've looked for answers.
 
-  ## What have you tried?
-
-  Please describe what you've already tried or where you've looked for answers.
 
 # Issue Templates Config
 issue_templates_config: |

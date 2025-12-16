@@ -13,15 +13,12 @@ type FixResult struct {
 	Changes []Change
 }
 
-// Change represents a single file/folder change
 type Change struct {
 	Type        ChangeType
 	Path        string
 	Description string
 	Content     string
 }
-
-// ChangeType defines the type of change
 type ChangeType string
 
 const (
@@ -31,7 +28,6 @@ const (
 	ChangeDeleteFile   ChangeType = "delete_file"
 )
 
-// FixContext contains context for fix operations
 type FixContext struct {
 	ProjectPath   string
 	ProjectType   string
@@ -39,26 +35,70 @@ type FixContext struct {
 	Interactive   bool
 	DryRun        bool
 	CreateBackups bool
-	ProjectInfo   *resources.ProjectInfo // اضافه شده
+	ProjectInfo   *resources.ProjectInfo
 }
 
-// Fixer defines the interface for fix operations
 type Fixer interface {
 	CanFix(ruleID string) bool
 	Fix(ctx *FixContext, ruleID string) (*FixResult, error)
 }
 
-// FixPlan represents a plan of fixes to apply
 type FixPlan struct {
 	Fixes        []*FixResult
 	TotalChanges int
 }
 
-// FixSummary summarizes fix results
 type FixSummary struct {
 	Total   int
 	Fixed   int
 	Skipped int
 	Failed  int
 	Changes int
+}
+
+type ContentFunc func(ctx *FixContext) (string, error)
+
+type ValidatorFunc func(ctx *FixContext, fullPath string) (bool, error)
+
+type PostCreateFunc func(ctx *FixContext, fullPath string) error
+
+type FileFixSpec struct {
+	RuleID       string
+	Path         string
+	Description  string
+	PromptText   string
+	GetContent   ContentFunc
+	Validator    ValidatorFunc
+	PostCreate   PostCreateFunc
+	FormatForDry bool
+}
+
+type FolderFileSpec struct {
+	Name         string
+	GetContent   ContentFunc
+	PostCreate   PostCreateFunc
+	FormatForDry bool
+}
+
+type FolderFixSpec struct {
+	RuleID      string
+	Path        string
+	Description string
+	PromptText  string
+	Files       []FolderFileSpec
+	Validator   ValidatorFunc
+}
+
+type MultiFileSpec struct {
+	Path        string
+	Description string
+	GetContent  ContentFunc
+	PostCreate  PostCreateFunc
+}
+
+type MultiFileFixSpec struct {
+	RuleID     string
+	PromptText string
+	Files      []MultiFileSpec
+	Validator  ValidatorFunc
 }
