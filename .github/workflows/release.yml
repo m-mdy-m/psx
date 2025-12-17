@@ -21,27 +21,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
+          - os: ubuntu-latest
             target: linux-x64
             goos: linux
             goarch: amd64
             ext: ''
-          - runner: ubuntu-latest
+          - os: ubuntu-latest
             target: linux-arm64
             goos: linux
             goarch: arm64
             ext: ''
-          - runner: macos-latest
+          - os: macos-latest
             target: darwin-x64
             goos: darwin
             goarch: amd64
             ext: ''
-          - runner: macos-latest
+          - os: macos-latest
             target: darwin-arm64
             goos: darwin
             goarch: arm64
             ext: ''
-          - runner: windows-latest
+          - os: windows-latest
             target: windows-x64
             goos: windows
             goarch: amd64
