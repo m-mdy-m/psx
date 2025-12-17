@@ -1,4 +1,3 @@
-# Minimal Alpine-based Dockerfile for PSX
 FROM golang:1.25.0-alpine AS builder
 RUN apk add --no-cache git ca-certificates
 
@@ -9,22 +8,16 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -a -installsuffix cgo \
     -ldflags="-s -w -extldflags '-static' -X main.Version=$(git describe --tags --always 2>/dev/null || echo 'alpine')" \
-    -o psx \
+    -o /usr/local/bin/psx \
     ./cmd/psx
 
-RUN ./psx --version
-FROM alpine:3.19
-RUN apk --no-cache add ca-certificates
-RUN addgroup -g 1000 psx && \
-    adduser -D -u 1000 -G psx psx
+# verify binary
+RUN /usr/local/bin/psx --version
 
+# final smaller image
+FROM alpine:3.18
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /usr/local/bin/psx /usr/local/bin/psx
+RUN chmod +x /usr/local/bin/psx
 WORKDIR /project
-COPY --from=builder /build/psx /usr/local/bin/psx
-RUN chown psx:psx /usr/local/bin/psx
-USER psx
-
-ENTRYPOINT ["psx"]
-CMD ["--help"]
-LABEL maintainer="Genix <bitsgenix@gmail.com>"
-LABEL description="PSX - Project Structure Checker (Alpine)"
-LABEL version="alpine"
+ENTRYPOINT ["/usr/local/bin/psx"]

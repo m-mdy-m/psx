@@ -6,7 +6,7 @@ Multi-stage build with Alpine base.
 
 ```bash
 docker buildx build  -t psx:latest .
-docker run --rm -v $(pwd):/project psx:latest check
+sudo docker run -it --rm -v "$(pwd)":/project -w /project psx:latest check
 ```
 
 **Size:** ~20MB
@@ -16,7 +16,7 @@ Optimized Alpine-based image.
 
 ```bash
 docker buildx build -t psx:alpine -f infra/Dockerfile.alpine .
-docker run --rm -v $(pwd):/project psx:alpine check
+docker run -it --rm -v $(pwd):/project -w /project psx:alpine check
 ```
 
 **Size:** ~17MB
@@ -26,7 +26,7 @@ Minimal scratch-based image (smallest).
 
 ```bash
 docker buildx build -t psx:scratch -f infra/Dockerfile.scratch .
-docker run --rm -v $(pwd):/project psx:scratch check
+docker run -it --rm -v $(pwd):/project -w /project psx:scratch check
 ```
 
 **Size:** ~5MB

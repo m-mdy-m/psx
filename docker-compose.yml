@@ -11,7 +11,8 @@ services:
     volumes:
       - .:/project:ro
     working_dir: /project
-    command: check --verbose
+    entrypoint: psx
+    command: check
     
   # Alpine variant 
   psx-alpine:
