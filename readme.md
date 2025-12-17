@@ -1,92 +1,99 @@
 # PSX - Project Structure Checker
 
-yeah so basically this checks if your project has the right structure or not. like if you forgot to add a README or LICENSE or whatever, it'll tell you.
+**PSX** is a command-line tool that validates and standardizes project structures across different programming languages. It helps maintain consistency in your projects by checking for essential files, proper folder organization, and development best practices.
 
-## what it does
+## Features
 
-- checks if you have basic files (README, LICENSE, etc)
-- looks at your project type (node, go, rust, whatever)
-- tells you what's missing
-- can fix some stuff automatically if you want
-- works on linux, mac, windows
+- **Automatic Detection** - Identifies project type (Node.js, Go, etc.)
+- **Auto-Fix** - Automatically creates missing files and folders
+- **Multi-Language Support** - Supports Node.js, Go, and generic projects
+- **Configurable** - Customize rules and severity levels via YAML
+- **Fast** - Parallel rule execution for quick validation
 
-## install
+## Installation
 
-### quick way
+### Quick Install (Recommended)
+
+**Linux/macOS:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash
 ```
 
-### or download binary
-go to releases page and download the one for your OS
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1" -OutFile install.ps1; .\install.ps1 github
+```
 
-### or build it yourself
+### Download Binary
+
+Download pre-built binaries from [Releases](https://github.com/m-mdy-m/psx/releases):
+
+- Linux (amd64, arm64)
+- macOS (amd64, arm64)  
+- Windows (amd64)
+
+### Build from Source
+
+Requirements: Go 1.25+
+
 ```bash
 git clone https://github.com/m-mdy-m/psx
 cd psx
 make build
+sudo make install
 ```
 
-## how to use
+### Docker
 
-just run it in your project folder:
 ```bash
+docker pull bitsgenix/psx:latest
+docker run --rm -v $(pwd):/project psx:latest check
+```
+
+See [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instructions.
+
+## Quick Start
+
+**Check your project:**
+```bash
+cd my-project
 psx check
 ```
 
-it'll tell you what's wrong. if you want more info:
-```bash
-psx check --verbose
-```
-
-fix stuff automatically:
+**Fix issues automatically:**
 ```bash
 psx fix
 ```
 
-or fix stuff one by one (asks you first):
+**Fix with confirmation:**
 ```bash
 psx fix --interactive
 ```
 
-## examples
+## Development
 
-### check a nodejs project
-```bash
-cd my-node-app
-psx check
+### Requirements
 
-# output:
-# ✗ README_MISSING
-# ✗ tests/ folder not found
-# ⚠ No LICENSE file
-```
+- Go 1.25+
+- Make
 
-### fix everything
-```bash
-psx fix
+## Contributing
 
-# creates README.md
-# creates tests/ folder
-# asks which license you want
-```
+Contributions are welcome! Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
-## why i made this
+## License
 
-i kept forgetting to add READMEs and licenses to my projects lol. also wanted something simple that just works without tons of config.
+[MIT License](LICENSE) - Copyright (c) 2024 m-mdy-m
 
-## contributing
+## Links
 
-sure, send PRs. check CONTRIBUTING.md if you care about that stuff.
+- **Repository:** https://github.com/m-mdy-m/psx
+- **Issues:** https://github.com/m-mdy-m/psx/issues
+- **Releases:** https://github.com/m-mdy-m/psx/releases
+- **Documentation:** [docs/](docs/)
 
-## license
+## Support
 
-[MIT](./LICENSE) - do whatever you want
-
-## issues?
-
-open an issue on github or email me: bitsgenix@gmail.com
-
----
-
-made by [@m-mdy-m](https://github.com/m-mdy-m) | [website](https://m-mdy-m.github.io)
+- Email: bitsgenix@gmail.com
+- GitHub Discussions: [Discussions](https://github.com/m-mdy-m/psx/discussions)
+- Bug Reports: [Issues](https://github.com/m-mdy-m/psx/issues)

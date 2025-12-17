@@ -19,30 +19,40 @@ errors:
 help:
   main: |
     PSX - Project Structure Checker
-
-    Usage: psx [command] [flags]
-
-    Commands:
-      check       Validate project structure
-      fix         Fix structural issues
-      init        Create configuration file
-      rules       List validation rules
-      config      Manage configuration
-      version     Show version
-
-    Flags:
-      -v, --verbose       Show detailed output
-      -q, --quiet         Minimal output
-          --config PATH   Config file path
-          --no-color      Disable colors
-      -h, --help          Show help
-
-    Examples:
-      psx check
-      psx fix --interactive
-      psx project show 
-
-    Documentation: https://github.com/m-mdy-m/psx
+        
+        Validate and fix project structure automatically
+        
+        USAGE:
+          psx <command> [flags]
+        
+        COMMANDS:
+          check       Validate project structure
+          fix         Fix structural issues automatically
+          project     Manage project information cache
+          
+        GLOBAL FLAGS:
+          --config <file>   Use specific config file
+          --verbose, -v     Show detailed output
+          --quiet, -q       Minimal output
+          --no-color        Disable colored output
+          --help, -h        Show help
+          --version         Show version
+        
+        EXAMPLES:
+          psx check                    # Validate current directory
+          psx check --verbose          # Detailed validation
+          psx check --output json      # JSON output for CI/CD
+          psx fix                      # Fix issues interactively
+          psx fix --dry-run            # Preview fixes
+          psx fix --rule readme        # Fix specific rule
+          psx project show             # Show cached project info
+        
+        DOCUMENTATION:
+          https://github.com/m-mdy-m/psx
+        
+        SUPPORT:
+          Issues: https://github.com/m-mdy-m/psx/issues
+          Email:  bitsgenix@gmail.com
 
 check:
   success_all: "All %d checks passed"
