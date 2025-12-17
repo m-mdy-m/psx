@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Core Features
 - Project structure validation with configurable rules
 - Auto-fix capability for common structural issues
-- Multi-language project detection (Go, Node.js, Python, Rust, Java)
+- Multi-language project detection (Go, Node.js)
 - Interactive and non-interactive modes for fixing issues
 - Comprehensive configuration system via YAML files
 
@@ -24,11 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CI/CD: GitHub Actions, Renovate, Dependabot
   - Quality: EditorConfig, pre-commit, Prettier, ESLint, Husky
   - DevOps: Docker, Kubernetes, Nginx configurations
-
-#### Output Formats
-- Human-readable table output with colors
-- Machine-readable JSON output
-- Support for multiple severity levels (error, warning, info)
 
 #### Auto-Fix Capabilities
 - Create missing files (README, LICENSE, etc.)
@@ -62,8 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Details
 
 #### Architecture
-- Written in Go 1.21+
-- Zero external runtime dependencies
+- Written in Go 1.25+
 - Embedded configuration and templates
 - Concurrent rule execution
 - Modular rule system with registry pattern
@@ -87,3 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security policy
 
 [1.0.0]: https://github.com/m-mdy-m/psx/releases/tag/v1.0.0
+
+## [1.0.1] - 2025-12-17
+
+### Fixed
+- Docker build and publish issues
+- Minor fixes and updates
+
+[1.0.1]: https://github.com/m-mdy-m/psx/releases/tag/v1.0.1
