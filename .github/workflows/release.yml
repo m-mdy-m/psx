@@ -140,7 +140,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -155,18 +156,31 @@ jobs:
           rm *.sha256
           ls -lh
 
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Extract latest version from CHANGELOG
+        id: extract_version
+        run: |
+          LATEST=$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md | head -1)
+          echo "LATEST_VERSION=$LATEST"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST"
+          PATCH=$((PATCH+1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "NEW_VERSION=$NEW_VERSION"
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create git tag for new version
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag "v${{ steps.extract_version.outputs.VERSION }}"
+          git push origin "v${{ steps.extract_version.outputs.VERSION }}"
       - name: Extract release notes
         id: extract_notes
         run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
+          VERSION="${{ steps.extract_version.outputs.VERSION }}"
           if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
             sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$d' > release_notes.md
           else
-            echo "Release ${{ github.ref_name }}" > release_notes.md
+            echo "Release v${VERSION}" > release_notes.md
             echo "" >> release_notes.md
             echo "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." >> release_notes.md
           fi
@@ -176,7 +190,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: Release v${{ steps.extract_version.outputs.VERSION }}
           body_path: release_notes.md
           files: binaries/*
           draft: false
