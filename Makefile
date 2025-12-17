@@ -47,9 +47,48 @@ build-all:
 	@echo "$(YELLOW)Building for all platforms...$(NC)"
 	@./scripts/build.sh all
 
+# Release target - creates a new release
 release:
-	@echo "$(YELLOW)Creating release packages...$(NC)"
+	@echo "$(YELLOW)Creating release $(VERSION)...$(NC)"
+	@echo ""
+	@# Check if on main branch
+	@if [ "$$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then \
+		echo "$(RED)Error: Must be on main branch to release$(NC)"; \
+		exit 1; \
+	fi
+	@# Check if working directory is clean
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "$(RED)Error: Working directory is not clean$(NC)"; \
+		exit 1; \
+	fi
+	@# Check if version tag exists
+	@if git rev-parse $(VERSION) >/dev/null 2>&1; then \
+		echo "$(RED)Error: Tag $(VERSION) already exists$(NC)"; \
+		exit 1; \
+	fi
+	@# Run tests
+	@echo "$(YELLOW)Running tests...$(NC)"
+	@go test ./... -v
+	@echo ""
+	@# Build for all platforms
+	@echo "$(YELLOW)Building for all platforms...$(NC)"
 	@./scripts/build.sh release
+	@echo ""
+	@# Update CHANGELOG
+	@echo "$(YELLOW)Update CHANGELOG.md with release notes...$(NC)"
+	@echo "Press Enter when done..."
+	@read dummy
+	@# Commit and tag
+	@git add CHANGELOG.md
+	@git commit -m "chore: release $(VERSION)"
+	@git tag -a $(VERSION) -m "Release $(VERSION)"
+	@echo ""
+	@echo "$(GREEN)✓ Release $(VERSION) created!$(NC)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Review the changes"
+	@echo "  2. Push: git push origin main --tags"
+	@echo "  3. Create GitHub release with build/$(BINARY_NAME)-*.tar.gz"
 
 test:
 	@echo "$(YELLOW)Running tests...$(NC)"
@@ -133,12 +172,11 @@ help:
 	@echo ""
 	@echo "Cross-platform:"
 	@echo "  build-all     - Build for all platforms"
-	@echo "  release       - Create release packages"
+	@echo "  release       - Create a new release (requires VERSION)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test          - Run tests"
 	@echo "  test-coverage - Run tests with coverage report"
-	@echo "  benchmark     - Run benchmarks"
 	@echo "  lint          - Run linters"
 	@echo "  fmt           - Format code"
 	@echo ""
@@ -157,4 +195,4 @@ help:
 	@echo "  make build              # Build binary"
 	@echo "  make test               # Run tests"
 	@echo "  make docker-all         # Build all Docker images"
-	@echo "  make release            # Create release packages"
+	@echo "  VERSION=v1.0.0 make release  # Create release"
