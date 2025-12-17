@@ -52,9 +52,43 @@ detect_platform() {
     echo "${os}-${arch}"
 }
 
-# Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+add_to_path() {
+    local dir="$1"
+    
+    # Detect shell
+    local shell_rc=""
+    if [ -n "$BASH_VERSION" ]; then
+        shell_rc="$HOME/.bashrc"
+    elif [ -n "$ZSH_VERSION" ]; then
+        shell_rc="$HOME/.zshrc"
+    elif [ -f "$HOME/.profile" ]; then
+        shell_rc="$HOME/.profile"
+    fi
+    
+    if [ -z "$shell_rc" ]; then
+        echo -e "${YELLOW}Could not detect shell config file${NC}"
+        echo "Add this to your shell profile manually:"
+        echo "  export PATH=\"${dir}:\$PATH\""
+        return
+    fi
+    
+    # Check if already in PATH
+    if grep -q "export PATH.*${dir}" "$shell_rc" 2>/dev/null; then
+        echo "Already in PATH config"
+        return
+    fi
+    
+    echo -e "${YELLOW}Adding ${dir} to PATH in ${shell_rc}...${NC}"
+    echo "" >> "$shell_rc"
+    echo "# PSX" >> "$shell_rc"
+    echo "export PATH=\"${dir}:\$PATH\"" >> "$shell_rc"
+    echo -e "${GREEN}✓ Added to PATH config${NC}"
+    echo -e "${YELLOW}Run: source ${shell_rc}${NC}"
+    echo "Or restart your terminal"
 }
 
 # Download and install from GitHub releases
@@ -112,12 +146,15 @@ install_from_github() {
     
     # Determine install directory
     local install_to="${INSTALL_DIR}"
+    local needs_path_update=false
+    
     if [ ! -w "${INSTALL_DIR}" ]; then
         echo ""
         echo -e "${YELLOW}No write permission to ${INSTALL_DIR}${NC}"
         echo "Installing to user directory: ${USER_INSTALL_DIR}"
         install_to="${USER_INSTALL_DIR}"
         mkdir -p "${USER_INSTALL_DIR}"
+        needs_path_update=true
     fi
     
     # Install
@@ -139,9 +176,15 @@ install_from_github() {
         # Check if in PATH
         if ! command_exists psx; then
             echo ""
-            echo -e "${YELLOW}Note: ${install_to} is not in your PATH${NC}"
-            echo "Add this to your shell profile:"
-            echo "  export PATH=\"${install_to}:\$PATH\""
+            echo -e "${YELLOW}Warning: ${install_to} is not in your PATH${NC}"
+            
+            if [ "$needs_path_update" = true ]; then
+                add_to_path "${install_to}"
+            fi
+        else
+            echo ""
+            echo -e "${GREEN}✓ psx command is available${NC}"
+            echo "Try: psx --version"
         fi
     else
         echo -e "${RED}Installation failed${NC}"
@@ -162,12 +205,15 @@ install_from_local() {
     echo "Installing from: ${binary_path}"
     
     local install_to="${INSTALL_DIR}"
+    local needs_path_update=false
+    
     if [ ! -w "${INSTALL_DIR}" ]; then
         echo ""
         echo -e "${YELLOW}No write permission to ${INSTALL_DIR}${NC}"
         echo "Installing to user directory: ${USER_INSTALL_DIR}"
         install_to="${USER_INSTALL_DIR}"
         mkdir -p "${USER_INSTALL_DIR}"
+        needs_path_update=true
     fi
     
     echo -e "${YELLOW}Installing to ${install_to}...${NC}"
@@ -185,8 +231,19 @@ install_from_local() {
         echo ""
         echo "Location: ${install_to}/${BINARY_NAME}"
         
-        # Show version
         "${install_to}/${BINARY_NAME}" --version
+        
+        if ! command_exists psx; then
+            echo ""
+            echo -e "${YELLOW}Warning: ${install_to} is not in your PATH${NC}"
+            
+            if [ "$needs_path_update" = true ]; then
+                add_to_path "${install_to}"
+            fi
+        else
+            echo ""
+            echo -e "${GREEN}✓ psx command is available${NC}"
+        fi
     else
         echo -e "${RED}Installation failed${NC}"
         exit 1
@@ -221,6 +278,9 @@ uninstall() {
     else
         echo ""
         echo -e "${GREEN}PSX uninstalled successfully${NC}"
+        echo ""
+        echo "Note: PATH entries in shell configs remain."
+        echo "Remove them manually if needed."
     fi
 }
 

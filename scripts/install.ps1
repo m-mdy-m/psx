@@ -1,5 +1,4 @@
 # PSX Installation Script for Windows
-# Installs PSX binary to system or user directory
 
 param(
     [Parameter(Position=0)]
@@ -39,13 +38,32 @@ function Add-ToPath {
     
     if ($currentPath -notlike "*$Directory*") {
         Write-Host "Adding to PATH..." -ForegroundColor Yellow
-        $newPath = "$currentPath;$Directory"
+        $newPath = if ($currentPath.EndsWith(';')) {
+            "$currentPath$Directory"
+        } else {
+            "$currentPath;$Directory"
+        }
         [Environment]::SetEnvironmentVariable("Path", $newPath, $pathType)
+        
+        # Update current session
         $env:Path = "$env:Path;$Directory"
+        
         Write-Host "✓ Added to PATH" -ForegroundColor Green
-        Write-Host "  Note: Restart your terminal for PATH changes to take effect"
+        Write-Host ""
+        Write-Host "Note: New terminals will have PATH updated automatically" -ForegroundColor Yellow
+        Write-Host "For current terminal, restart or run:" -ForegroundColor Yellow
+        Write-Host "  `$env:Path = [Environment]::GetEnvironmentVariable('Path', '$pathType')" -ForegroundColor Gray
     } else {
         Write-Host "Already in PATH" -ForegroundColor Gray
+    }
+}
+
+function Test-PSXAvailable {
+    try {
+        $null = Get-Command psx -ErrorAction Stop
+        return $true
+    } catch {
+        return $false
     }
 }
 
@@ -104,12 +122,20 @@ function Install-FromGitHub {
         Write-Host ""
         Write-Host "Location: $installDir\$BinaryName"
         Write-Host "Version: $Version"
+        Write-Host ""
         
         # Add to PATH
         Add-ToPath $installDir
         
-        Write-Host ""
-        Write-Host "Installation complete! Run 'psx --version' to verify." -ForegroundColor Green
+        # Test if available
+        if (Test-PSXAvailable) {
+            Write-Host ""
+            Write-Host "✓ psx command is available" -ForegroundColor Green
+            Write-Host "Try: psx --version"
+        } else {
+            Write-Host ""
+            Write-Host "Note: You may need to restart your terminal" -ForegroundColor Yellow
+        }
         
     } catch {
         Write-Host "Installation failed: $_" -ForegroundColor Red
@@ -153,8 +179,19 @@ function Install-FromLocal {
         # Show version
         & "$installDir\$BinaryName" --version
         
+        Write-Host ""
+        
         # Add to PATH
         Add-ToPath $installDir
+        
+        # Test if available
+        if (Test-PSXAvailable) {
+            Write-Host ""
+            Write-Host "✓ psx command is available" -ForegroundColor Green
+        } else {
+            Write-Host ""
+            Write-Host "Note: You may need to restart your terminal" -ForegroundColor Yellow
+        }
         
     } catch {
         Write-Host "Installation failed: $_" -ForegroundColor Red
@@ -188,7 +225,8 @@ function Uninstall-PSX {
     } else {
         Write-Host ""
         Write-Host "PSX uninstalled successfully" -ForegroundColor Green
-        Write-Host "Note: You may need to manually remove from PATH"
+        Write-Host ""
+        Write-Host "Note: PATH entries remain. Remove them manually if needed." -ForegroundColor Yellow
     }
 }
 
