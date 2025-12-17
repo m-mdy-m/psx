@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # verify binary
 RUN /usr/local/bin/psx --version
 
-# final smaller image
+# final image
 FROM alpine:3.18
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /usr/local/bin/psx /usr/local/bin/psx
