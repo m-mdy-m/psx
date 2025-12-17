@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Standard Alpine-based
+  psx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: psx:latest
+    container_name: psx
+    volumes:
+      - .:/project:ro
+    working_dir: /project
+    command: check --verbose
+    
+  # Alpine variant 
+  psx-alpine:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.alpine
+    image: psx:alpine
+    container_name: psx-alpine
+    volumes:
+      - .:/project:ro
+    working_dir: /project
+    command: check
+    
+  # Scratch variant
+  psx-scratch:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.scratch
+    image: psx:scratch
+    container_name: psx-scratch
+    volumes:
+      - .:/project:ro
+    working_dir: /project
+    command: check

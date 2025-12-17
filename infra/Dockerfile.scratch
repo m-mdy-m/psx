@@ -1,0 +1,31 @@
+# Smallest possible image (~20MB)
+FROM golang:1.25.0-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -a -installsuffix cgo \
+    -ldflags="-s -w -extldflags '-static' -X main.Version=$(git describe --tags --always 2>/dev/null || echo 'scratch')" \
+    -tags netgo -trimpath \
+    -o psx \
+    ./cmd/psx
+RUN apk add --no-cache binutils && \
+    strip psx
+RUN ./psx --version
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /build/psx /psx
+
+WORKDIR /project
+USER 1000:1000
+
+ENTRYPOINT ["/psx"]
+CMD ["--help"]
+LABEL maintainer="Genix <bitsgenix@gmail.com>"
+LABEL description="PSX - Project Structure Checker (Scratch - Minimal)"
+LABEL version="scratch"

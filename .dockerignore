@@ -1,0 +1,38 @@
+# Build artifacts
+build/
+dist/
+*.exe
+
+# IDE and editor
+.vscode/
+tags*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# GitHub
+.github/
+
+# Documentation
+docs/
+LICENSE
+*.md
+!README.md
+
+# Config examples
+psx.yml
+.psx.yml
+psx.yaml
+.psx.yaml
+
+# Cache
+.psx-project.yml
+
+scripts/
+
+# Docker files
+Dockerfile*
+docker-compose.yml
+.dockerignore
