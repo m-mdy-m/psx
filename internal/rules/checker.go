@@ -1,80 +1,91 @@
 package rules
 
-import "sync"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+)
 
 func New(ctx *Context) *Checker {
 	return &Checker{ctx: ctx}
 }
 
 func (c *Checker) CheckAll(rules []Rule) []CheckResult {
-	results := make([]CheckResult, 0, len(rules))
-
-	// Parallel execution
-	resultsCh := make(chan CheckResult, len(rules))
+	results := make([]CheckResult, len(rules))
 	var wg sync.WaitGroup
 
-	for _, r := range rules {
+	for i, rule := range rules {
 		wg.Add(1)
-		go func(r Rule) {
+		go func(idx int, r Rule) {
 			defer wg.Done()
-			resultsCh <- c.Check(r)
-		}(r)
+			results[idx] = c.Check(r)
+		}(i, rule)
 	}
 
-	go func() {
-		wg.Wait()
-		close(resultsCh)
-	}()
-
-	for result := range resultsCh {
-		results = append(results, result)
-	}
-
+	wg.Wait()
 	return results
 }
+
 func (c *Checker) Check(rule Rule) CheckResult {
-	if rule.FixSpec.CustomCheck != nil {
-		res, err := rule.FixSpec.CustomCheck(c.ctx)
-		if err != nil {
-			return CheckResult{Passed: false, Message: err.Error()}
+	patterns := c.getPatterns(rule.Patterns)
+	if len(patterns) == 0 {
+		return c.failResult(rule, "No patterns defined for this project type")
+	}
+	for _, pattern := range patterns {
+		fullPath := filepath.Join(c.ctx.ProjectPath, pattern)
+
+		var exists bool
+		switch rule.Type {
+		case RuleTypeFile:
+			exists = c.checkFile(fullPath)
+		case RuleTypeFolder:
+			exists = c.checkFolder(fullPath)
 		}
-		return *res
-	}
-	switch rule.Type {
-	case RuleTypeFile:
-		return c.CheckFile(rule)
-	case RuleTypeFolder:
-		return c.CheckFolder(rule)
-	case RuleTypeMulti:
-		return c.CheckMulti(rule)
-	default:
-		return CheckResult{RuleID: rule.ID, Passed: false}
-	}
-}
 
-func (c *Checker) CheckFile(rule Rule) CheckResult {
-	return c.CheckRule(rule, CheckSpec{
-		Validator: ValidateExists,
-	})
-}
-func (c *Checker) CheckFolder(rule Rule) CheckResult {
-	return c.CheckRule(rule, CheckSpec{
-		Validator: ValidateExists,
-	})
-}
-func (c *Checker) CheckMulti(rule Rule) CheckResult {
-	fileResult := c.CheckFile(rule)
-	if fileResult.Passed {
-		return fileResult
+		if exists {
+			return c.successResult(rule, pattern)
+		}
 	}
 
-	folderResult := c.CheckFolder(rule)
-	if folderResult.Passed {
-		return folderResult
+	return c.failResult(rule, "Not found")
+}
+
+func (c *Checker) checkFile(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
 	}
 
-	return CheckResult{
-		RuleID: rule.ID,
-		Passed: false,
+	if info.IsDir() {
+		return false
 	}
+
+	return info.Size() > 0
+}
+
+func (c *Checker) checkFolder(path string) bool {
+	if strings.Contains(path, "*") {
+		matches, err := filepath.Glob(path)
+		return err == nil && len(matches) > 0
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.IsDir()
+}
+
+func (c *Checker) getPatterns(patterns map[string][]string) []string {
+	if p, ok := patterns[c.ctx.ProjectType]; ok {
+		return p
+	}
+
+	if p, ok := patterns["*"]; ok {
+		return p
+	}
+
+	return nil
 }

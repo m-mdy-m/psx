@@ -1,8 +1,6 @@
 package rules
 
-import (
-	"github.com/m-mdy-m/psx/internal/utils"
-)
+import "os"
 
 func ValidateExists(ctx *Context, fullPath string, info any) (bool, string, error) {
 	return true, "", nil
@@ -18,18 +16,40 @@ func ValidateNotEmpty(ctx *Context, fullPath string, info any) (bool, string, er
 	}
 
 	if fileInfo.IsDir() {
-		isEmpty, err := utils.IsDirEmpty(fullPath)
+		entries, err := os.ReadDir(fullPath)
 		if err != nil {
-			return false, "Cannot check directory contents", err
+			return false, "Cannot read directory", err
 		}
-		if isEmpty {
-			return false, "Folder exists but is empty", nil
+		if len(entries) == 0 {
+			return false, "Folder is empty", nil
 		}
 	} else {
 		if fileInfo.Size() < 10 {
-			return false, "File exists but appears to be empty", nil
+			return false, "File is too small or empty", nil
 		}
 	}
 
 	return true, "", nil
+}
+
+func ValidateFileSize(minSize int64) ValidatorFunc {
+	return func(ctx *Context, fullPath string, info any) (bool, string, error) {
+		fileInfo, ok := info.(interface {
+			IsDir() bool
+			Size() int64
+		})
+		if !ok {
+			return false, "Cannot validate path", nil
+		}
+
+		if fileInfo.IsDir() {
+			return true, "", nil
+		}
+
+		if fileInfo.Size() < minSize {
+			return false, "File is too small", nil
+		}
+
+		return true, "", nil
+	}
 }
