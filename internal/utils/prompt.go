@@ -1,28 +1,29 @@
-package shared
+package utils
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/m-mdy-m/psx/internal/logger"
 )
 
 var stdin = bufio.NewReader(os.Stdin)
 
 func Prompt(message string) bool {
-	fmt.Printf("%s [y/N]:\n> ", message)
+	logger.Infof("%s [y/N]:\n> ", message)
 	line, _ := stdin.ReadString('\n')
 	resp := strings.ToLower(strings.TrimSpace(line))
 	return resp == "y" || resp == "yes"
 }
 
 func PromptChoice(message string, options []string) (string, error) {
-	fmt.Println(message)
+	logger.Infof("%s\n", message)
 	for i, opt := range options {
-		fmt.Printf("  %d) %s\n", i+1, opt)
+		logger.Infof("  %d) %s\n", i+1, opt)
 	}
-	fmt.Print("Choose [1]:\n> ")
+	logger.Info("Choose [1]:\n> ")
 
 	line, _ := stdin.ReadString('\n')
 	line = strings.TrimSpace(line)
@@ -39,9 +40,9 @@ func PromptChoice(message string, options []string) (string, error) {
 
 func PromptInput(message string, defaultValue string) string {
 	if defaultValue != "" {
-		fmt.Printf("%s [%s]:\n> ", message, defaultValue)
+		logger.Infof("%s [%s]:\n> ", message, defaultValue)
 	} else {
-		fmt.Printf("%s:\n> ", message)
+		logger.Infof("%s:\n> ", message)
 	}
 
 	line, _ := stdin.ReadString('\n')
