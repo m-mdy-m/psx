@@ -1,21 +1,64 @@
 package rules
 
 import (
-	"github.com/m-mdy-m/psx/internal/checker"
 	"github.com/m-mdy-m/psx/internal/config"
 )
 
-type ExecutionResult struct {
-	Results []checker.RuleResult
-	Summary checker.Summary
-	Status  checker.Status
-	Context *checker.Context
+type CheckResult struct {
+	RuleID   string
+	Passed   bool
+	Severity config.Severity
+	Message  string
+	FixHint  string
+	DocURL   string
 }
-type Executor interface {
-	Execute(ctx *checker.Context, metadata *config.RuleMetadata) checker.RuleResult
+type Context struct {
+	ProjectPath string
+	ProjectType string
+}
+type Rule struct {
+	ID       string
+	Type     RuleType
+	Category string
+	Severity config.Severity
+	Patterns map[string][]string
+	FixSpec  FixSpec
 }
 
-type ExecutorFunc func(ctx *checker.Context, metadata *config.RuleMetadata) checker.RuleResult
-func (f ExecutorFunc) Execute(ctx *checker.Context, metadata *config.RuleMetadata) checker.RuleResult {
-	return f(ctx, metadata)
+type FixSpec struct {
+	Type         FixType
+	TemplateName string
+	Prompt       string
+	Files        []FileSpec
+	CustomCheck  func(*Context) (*CheckResult, error)
+	CustomFix    func(*Context) error
 }
+type FileSpec struct {
+	Name string
+}
+type RuleType int
+
+const (
+	RuleTypeFile RuleType = iota
+	RuleTypeFolder
+	RuleTypeMulti
+)
+
+type FixType int
+
+const (
+	FixTypeFile FixType = iota
+	FixTypeFolder
+	FixTypeMulti
+)
+
+type CheckSpec struct {
+	GetPatterns    func(*config.RuleMetadata, string) []string
+	Validator      ValidatorFunc
+	SuccessMessage string
+	FailMessage    string
+}
+type Checker struct {
+	ctx *Context
+}
+type ValidatorFunc func(ctx *Context, fullPath string, info any) (bool, string, error)
