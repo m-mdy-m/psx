@@ -37,16 +37,12 @@ rules:
   pull_request_template: info
   issue_templates: info
   funding: false
-  support: info
-  roadmap: info
 
   # ============================================
   # CI/CD Rules
   # ============================================
   ci_config: info
   github_actions: info
-  renovate: info
-  dependabot: info
 
   # ============================================
   # Quality Rules
@@ -54,14 +50,6 @@ rules:
   pre_commit: info
   editorconfig: info
   code_owners: info
-  prettier: info
-  prettierignore: info
-  eslint: info
-  commitlint: info
-  husky: info
-  lint_staged: info
-  makefile: info
-  gitattributes: info
 
   # ============================================
   # DevOps Rules
@@ -69,9 +57,6 @@ rules:
   dockerfile: info
   dockerignore: info
   docker_compose: info
-  kubernetes: info
-  nginx_config: info
-  infra_folder: info
 
 # Ignore patterns (like .gitignore)
 ignore:
