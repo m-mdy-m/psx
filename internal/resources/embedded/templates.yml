@@ -287,22 +287,6 @@ test_examples:
         }
     }
 
-  python: |
-    """Example test"""
-
-    def test_example():
-        """Example test"""
-        assert True
-
-  rust: |
-    #[cfg(test)]
-    mod tests {
-        #[test]
-        fn test_example() {
-            assert_eq!(2 + 2, 4);
-        }
-    }
-
 editorconfig: |
   root = true
 

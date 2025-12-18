@@ -85,47 +85,6 @@ editorconfig:
     indent_style = tab
     indent_size = 4
 
-  python: |
-    root = true
-
-    [*]
-    charset = utf-8
-    end_of_line = lf
-    insert_final_newline = true
-    trim_trailing_whitespace = true
-    indent_style = space
-    indent_size = 4
-
-    [*.py]
-    indent_size = 4
-    max_line_length = 88
-
-    [*.{yml,yaml}]
-    indent_size = 2
-
-    [*.md]
-    trim_trailing_whitespace = false
-
-  rust: |
-    root = true
-
-    [*]
-    charset = utf-8
-    end_of_line = lf
-    insert_final_newline = true
-    trim_trailing_whitespace = true
-    indent_style = space
-    indent_size = 4
-
-    [*.rs]
-    indent_size = 4
-
-    [*.toml]
-    indent_size = 2
-
-    [*.md]
-    trim_trailing_whitespace = false
-
 # Prettier - Node.js specific
 prettier:
   config: |
@@ -244,7 +203,7 @@ husky:
 
     npx --no -- commitlint --edit ${1}
 
-# Pre-commit (Python tool)
+# Pre-commit 
 pre_commit:
   generic: |
     # See https://pre-commit.com for more information
@@ -284,29 +243,6 @@ pre_commit:
           - id: eslint
             files: \.[jt]sx?$
             types: [file]
-
-  python: |
-    repos:
-      - repo: https://github.com/pre-commit/pre-commit-hooks
-        rev: v4.5.0
-        hooks:
-          - id: trailing-whitespace
-          - id: end-of-file-fixer
-          - id: check-yaml
-          - id: check-added-large-files
-          - id: check-merge-conflict
-
-      - repo: https://github.com/psf/black
-        rev: 23.12.1
-        hooks:
-          - id: black
-            language_version: python3
-
-      - repo: https://github.com/PyCQA/flake8
-        rev: 7.0.0
-        hooks:
-          - id: flake8
-
   go: |
     repos:
       - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -322,24 +258,6 @@ pre_commit:
         rev: v1.55.2
         hooks:
           - id: golangci-lint
-
-  rust: |
-    repos:
-      - repo: https://github.com/pre-commit/pre-commit-hooks
-        rev: v4.5.0
-        hooks:
-          - id: trailing-whitespace
-          - id: end-of-file-fixer
-          - id: check-yaml
-          - id: check-added-large-files
-          - id: check-merge-conflict
-
-      - repo: https://github.com/doublify/pre-commit-rust
-        rev: v1.0
-        hooks:
-          - id: fmt
-          - id: cargo-check
-          - id: clippy
 
 # Lint-staged
 lint_staged:
@@ -419,50 +337,10 @@ gitattributes:
     *.exe binary
     *.so binary
 
-  python: |
-    * text=auto
-
-    # Source
-    *.py text eol=lf
-
-    # Config
-    requirements.txt text eol=lf
-    setup.py text eol=lf
-
-    # Shell
-    *.sh text eol=lf
-
-    # Binary
-    *.pyc binary
-
 # Makefile templates
 makefile:
   nodejs: |
-    .PHONY: help install dev build test lint clean
-
-    help: ## Show this help
-    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
-    install: ## Install dependencies
-    	npm install
-
-    dev: ## Start development server
-    	npm run dev
-
-    build: ## Build for production
-    	npm run build
-
-    test: ## Run tests
-    	npm test
-
-    lint: ## Lint code
-    	npm run lint
-
-    format: ## Format code
-    	npm run format
-
-    clean: ## Clean build artifacts
-    	rm -rf dist build node_modules
+    no need Makefile for Nodejs projects use package.json scripts
 
   go: |
     .PHONY: help build test lint clean install
@@ -496,60 +374,3 @@ makefile:
     install: ## Install dependencies
     	go mod download
     	go mod tidy
-
-  python: |
-    .PHONY: help install dev test lint clean
-
-    help: ## Show this help
-    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
-    install: ## Install dependencies
-    	pip install -r requirements.txt
-
-    dev: ## Install dev dependencies
-    	pip install -r requirements-dev.txt
-
-    test: ## Run tests
-    	pytest
-
-    test-coverage: ## Run tests with coverage
-    	pytest --cov=. --cov-report=html
-
-    lint: ## Lint code
-    	flake8 .
-    	black --check .
-
-    format: ## Format code
-    	black .
-
-    clean: ## Clean artifacts
-    	find . -type d -name __pycache__ -exec rm -rf {} +
-    	find . -type f -name '*.pyc' -delete
-    	rm -rf .pytest_cache htmlcov .coverage
-
-  rust: |
-    .PHONY: help build test lint clean
-
-    help: ## Show this help
-    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
-    build: ## Build the application
-    	cargo build
-
-    build-release: ## Build for release
-    	cargo build --release
-
-    test: ## Run tests
-    	cargo test
-
-    lint: ## Lint code
-    	cargo clippy -- -D warnings
-
-    fmt: ## Format code
-    	cargo fmt
-
-    clean: ## Clean build artifacts
-    	cargo clean
-
-    install: ## Install dependencies
-    	cargo fetch

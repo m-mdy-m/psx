@@ -8,29 +8,9 @@ aliases:
   js: nodejs
   typescript: nodejs
   ts: nodejs
-  npm: nodejs
-  yarn: nodejs
-  pnpm: nodejs
-
   # Go
   golang: go
 
-  # Rust
-  rustlang: rust
-
-  # Python
-  py: python
-  python3: python
-
-  # Ruby
-  rb: ruby
-
-  # Others
-  php: php
-  java: java
-  csharp: csharp
-  cpp: cpp
-  c: c
 
 # Folder names for each language
 folders:
@@ -40,19 +20,9 @@ folders:
   
   go:
     src: [cmd, internal, pkg]
-    tests: []  # go uses inline tests
-  
-  python:
-    src: [src]
-    tests: [tests, test]
-  
-  rust:
-    src: [src]
-    tests: [tests]
+    tests: []
 
 # Test file patterns
 test_patterns:
   nodejs: [.test.js, .test.ts, .spec.js, .spec.ts]
   go: [_test.go]
-  python: [test_, _test.py]
-  rust: [test, tests.rs]
