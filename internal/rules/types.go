@@ -2,7 +2,30 @@ package rules
 
 import (
 	"github.com/m-mdy-m/psx/internal/config"
+	"github.com/m-mdy-m/psx/internal/resources"
 )
+
+type Fixer struct {
+	ctx         *Context
+	interactive bool
+	dryRun      bool
+	projectInfo *resources.ProjectInfo
+}
+type FixSummary struct {
+	Total   int
+	Fixed   int
+	Skipped int
+	Failed  int
+	Changes int
+}
+
+type FixResult struct {
+	RuleID  string
+	Fixed   bool
+	Skipped bool
+	Error   error
+	Changes []string
+}
 
 type CheckResult struct {
 	RuleID   string
@@ -26,16 +49,12 @@ type Rule struct {
 }
 
 type FixSpec struct {
-	Type         FixType
-	TemplateName string
-	Prompt       string
-	Files        []FileSpec
-	CustomCheck  func(*Context) (*CheckResult, error)
-	CustomFix    func(*Context) error
+	Type        FixType
+	Prompt      string
+	CustomCheck func(*Context) (*CheckResult, error)
+	CustomFix   func(*Context) error
 }
-type FileSpec struct {
-	Name string
-}
+
 type RuleType int
 
 const (
