@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/m-mdy-m/psx/internal/resources"
+	"github.com/m-mdy-m/psx/internal/utils"
 )
 
 type ContentGenerator struct {
@@ -22,18 +23,21 @@ func NewContentGenerator(projectInfo *resources.ProjectInfo, projectType string)
 
 func (cg *ContentGenerator) Generate(ruleID, pattern string) (string, error) {
 	filename := filepath.Base(pattern)
+
 	if content := cg.generateByRuleID(ruleID); content != "" {
 		return content, nil
 	}
+
 	if content := cg.generateByPattern(filename); content != "" {
 		return content, nil
 	}
+
 	return fmt.Sprintf("# %s\n\nTODO: Add content\n", filename), nil
 }
 
 func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 	switch ruleID {
-	// General files (from templates.yml)
+	// General files
 	case "readme":
 		return resources.GetReadme(cg.projectInfo, cg.projectType)
 	case "license":
@@ -44,9 +48,10 @@ func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 		return resources.GetChangelog(cg.projectInfo)
 	case "contributing":
 		return resources.GetContributing()
+
+	// Documentation
 	case "api_docs":
 		return resources.GetAPIDocs(cg.projectInfo, cg.projectType)
-	// Documentation (from docs-templates.yml)
 	case "security":
 		return resources.GetSecurity(cg.projectInfo)
 	case "code_of_conduct":
@@ -56,19 +61,24 @@ func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 	case "codeowners":
 		return resources.GetCodeowners(cg.projectInfo)
 
-	// Quality tools (from quality-tools.yml)
+	// Quality tools
 	case "editorconfig":
 		return resources.GetEditorconfig(cg.projectType)
 	case "pre_commit":
 		return resources.GetPreCommit(cg.projectType)
 
-	// DevOps (from devops.yml)
+	// DevOps
 	case "dockerfile":
 		return resources.GetDockerfile(cg.projectInfo, cg.projectType)
 	case "dockerignore":
 		return resources.GetDockerignore(cg.projectType)
 	case "docker_compose":
-		return resources.GetDockerCompose(cg.projectInfo, cg.projectType)
+		return resources.GetDockerComposeWithPrompt(cg.projectInfo, cg.projectType)
+
+	// CI/CD
+	case "ci_config":
+		return resources.GetCIConfig(cg.projectInfo, cg.projectType)
+
 	default:
 		return ""
 	}
@@ -77,7 +87,6 @@ func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 func (cg *ContentGenerator) generateByPattern(filename string) string {
 	lowerFilename := strings.ToLower(filename)
 
-	// Check for specific filenames
 	switch {
 	case strings.Contains(lowerFilename, "readme"):
 		return resources.GetReadme(cg.projectInfo, cg.projectType)
@@ -100,9 +109,11 @@ func (cg *ContentGenerator) generateByPattern(filename string) string {
 	case lowerFilename == ".dockerignore":
 		return resources.GetDockerignore(cg.projectType)
 	case strings.Contains(lowerFilename, "docker-compose"):
-		return resources.GetDockerCompose(cg.projectInfo, cg.projectType)
+		return resources.GetDockerComposeWithPrompt(cg.projectInfo, cg.projectType)
 	case lowerFilename == "codeowners":
 		return resources.GetCodeowners(cg.projectInfo)
+	case strings.Contains(lowerFilename, "api"):
+		return resources.GetAPIDocs(cg.projectInfo, cg.projectType)
 	}
 
 	return ""
@@ -130,7 +141,52 @@ func (cg *ContentGenerator) GenerateMultiple(ruleID string) (map[string]string, 
 			result[fmt.Sprintf("scripts/%s", name)] = content
 		}
 		return result, nil
+
+	case "api_docs":
+		apiDocPath := cg.getAPIDocPath()
+		content := resources.GetAPIDocs(cg.projectInfo, cg.projectType)
+		result[apiDocPath] = content
+		return result, nil
+	case "ci_config":
+		return cg.generateCIConfig()
 	}
 
 	return nil, nil
+}
+
+func (cg *ContentGenerator) getAPIDocPath() string {
+	switch cg.projectType {
+	case "nodejs", "go":
+		return "docs/api/README.md"
+	default:
+		return "docs/API.md"
+	}
+}
+
+func (cg *ContentGenerator) generateCIConfig() (map[string]string, error) {
+	result := make(map[string]string)
+
+	platform, err := utils.PromptChoice(
+		"Which CI/CD platform do you want to use?",
+		[]string{"GitHub Actions", "GitLab CI", "Both", "Skip"},
+	)
+	if err != nil || platform == "Skip" {
+		return nil, nil
+	}
+
+	switch platform {
+	case "GitHub Actions":
+		workflow := resources.GetGitHubActionsWorkflow(cg.projectInfo, cg.projectType)
+		result[".github/workflows/ci.yml"] = workflow
+	case "GitLab CI":
+		config := resources.GetGitLabCIConfig(cg.projectInfo, cg.projectType)
+		result[".gitlab-ci.yml"] = config
+	case "Both":
+		workflow := resources.GetGitHubActionsWorkflow(cg.projectInfo, cg.projectType)
+		result[".github/workflows/ci.yml"] = workflow
+		config := resources.GetGitLabCIConfig(cg.projectInfo, cg.projectType)
+		result[".gitlab-ci.yml"] = config
+	}
+
+	return result, nil
 }

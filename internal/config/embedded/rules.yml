@@ -1,5 +1,5 @@
 # PSX Rules Metadata
-# don't edit this
+
 rules:
   # ============================================
   # General Rules
@@ -15,7 +15,7 @@ rules:
       - readme.md
     message: "README.md file not found in project root"
     fix_hint: "psx fix --rule readme"
-    doc_url: "..."
+    doc_url: ""
 
   license:
     id: "LICENSE_REQUIRED"
@@ -28,11 +28,12 @@ rules:
       - LICENSE.txt
       - COPYING
     additional_checks:
-      - package.json:license  # Check license field in package.json
-      - Cargo.toml:license     # Check license field in Cargo.toml
+      - package.json:license
+      - Cargo.toml:license
     message: "No LICENSE file found"
     fix_hint: "psx fix --rule license"
     doc_url: "https://choosealicense.com"
+
   gitignore:
     id: "GITIGNORE_REQUIRED"
     category: general
@@ -56,6 +57,24 @@ rules:
     message: "No CHANGELOG file found"
     fix_hint: "psx fix --rule changelog"
     doc_url: "https://keepachangelog.com"
+
+  # ============================================
+  # Package Manager Rules
+  # ============================================
+  package_manager:
+    id: "PACKAGE_MANAGER_REQUIRED"
+    category: general
+    description: "Project should have package manager configuration"
+    severity: error
+    patterns:
+      nodejs:
+        - package.json
+      go:
+        - go.mod
+    message: "No package manager configuration found"
+    fix_hint: "Initialize your package manager (npm init, go mod init)"
+    doc_url: ""
+
   # ============================================
   # Structure Rules
   # ============================================
@@ -72,10 +91,8 @@ rules:
         - cmd/
         - internal/
         - pkg/
-      python:
+      generic:
         - src/
-        - package_name/
-
     message: "No source folder found"
     fix_hint: "psx fix --rule src_folder"
     doc_url: ""
@@ -90,9 +107,11 @@ rules:
         - test/
         - tests/
         - __tests__/
+        - "**/*.test.js"
+        - "**/*.test.ts"
       go:
         - "**/*_test.go"
-      python:
+      generic:
         - tests/
         - test/
     message: "No tests found"
@@ -110,6 +129,19 @@ rules:
       - doc/
     message: "No docs/ folder found"
     fix_hint: "psx fix --rule docs_folder"
+    doc_url: ""
+
+  scripts_folder:
+    id: "SCRIPTS_FOLDER_RECOMMENDED"
+    category: structure
+    description: "Utility scripts for development"
+    severity: info
+    patterns:
+      - scripts/
+      - script/
+      - bin/
+    message: "No scripts folder found"
+    fix_hint: "psx fix --rule scripts_folder"
     doc_url: ""
 
   # ============================================
@@ -144,116 +176,21 @@ rules:
   api_docs:
     id: "API_DOCS_REQUIRED"
     category: documentation
-    description: "Document your public API (for libraries)"
+    description: "Document your public API"
     severity: warning
     patterns:
       nodejs:
         - docs/api/
-        - README.md:api  # API section in README
+        - docs/API.md
       go:
-        - "**/*.go:doc"  # godoc comments
-      python:
         - docs/api/
-        - "**/*.py:docstring"
+        - docs/API.md
+      generic:
+        - docs/api/
+        - docs/API.md
     message: "No API documentation found"
-    fix_hint: "Add API documentation in docs/api/ or inline comments"
+    fix_hint: "psx fix --rule api_docs"
     doc_url: ""
-
-  # ============================================
-  # CI/CD Rules
-  # ============================================
-
-  ci_config:
-    id: "CI_CONFIG_RECOMMENDED"
-    category: cicd
-    description: "Automated testing and deployment"
-    severity: info
-    patterns:
-      - .github/workflows/
-      - .gitlab-ci.yml
-      - .circleci/config.yml
-      - .travis.yml
-      - Jenkinsfile
-    message: "No CI/CD configuration found"
-    fix_hint: "psx fix --rule ci_config"
-    doc_url: ""
-  # ============================================
-  # Quality Rules
-  # ============================================
-
-  pre_commit:
-    id: "PRE_COMMIT_RECOMMENDED"
-    category: quality
-    description: "Run checks before committing"
-    default_severity: info
-    patterns:
-      - .pre-commit-config.yaml
-      - .husky/
-      - .git/hooks/pre-commit
-    message: "No pre-commit hooks found"
-    fix_hint: "psx fix --rule pre_commit"
-    doc_url: "https://pre-commit.com"
-
-  editorconfig:
-    id: "EDITORCONFIG_RECOMMENDED"
-    category: quality
-    description: "Consistent coding style across editors"
-    severity: info
-    patterns:
-      - .editorconfig
-    message: "No .editorconfig file found"
-    fix_hint: "psx fix --rule editorconfig"
-    doc_url: "https://editorconfig.org"
-
-  code_owners:
-    id: "CODE_OWNERS_RECOMMENDED"
-    category: quality
-    description: "Define code ownership for reviews"
-    severity: info
-    patterns:
-      - CODEOWNERS
-      - .github/CODEOWNERS
-      - docs/CODEOWNERS
-    message: "No CODEOWNERS file found"
-    fix_hint: "psx fix --rule code_owners"
-    doc_url: "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
-  
-  dockerfile:
-    id: "DOCKERFILE_RECOMMENDED"
-    category: devops
-    description: "Container images with Docker"
-    severity: info
-    patterns:
-      - Dockerfile
-      - docker/Dockerfile
-    message: "No Dockerfile found"
-    fix_hint: "psx fix --rule dockerfile"
-    doc_url: "https://docs.docker.com/engine/reference/builder/"
-
-  dockerignore:
-    id: "DOCKERIGNORE_RECOMMENDED"
-    category: devops
-    description: "Optimize Docker builds with .dockerignore"
-    severity: info
-    patterns:
-      - .dockerignore
-    message: "No .dockerignore found"
-    fix_hint: "psx fix --rule dockerignore"
-    doc_url: "https://docs.docker.com/engine/reference/builder/#dockerignore-file"
-
-  docker_compose:
-    id: "DOCKER_COMPOSE_RECOMMENDED"
-    category: devops
-    description: "Multi-container Docker applications"
-    severity: info
-    patterns:
-      - docker-compose.yml
-      - docker-compose.yaml
-      - compose.yml
-      - compose.yaml
-    message: "No docker-compose configuration found"
-    fix_hint: "psx fix --rule docker_compose"
-    doc_url: "https://docs.docker.com/compose/"
 
   security:
     id: "SECURITY_RECOMMENDED"
@@ -305,18 +242,99 @@ rules:
     doc_url: "https://docs.github.com/en/communities"
 
   # ============================================
-  # Project Structure (Extended)
+  # CI/CD Rules
   # ============================================
-
-  scripts_folder:
-    id: "SCRIPTS_FOLDER_RECOMMENDED"
-    category: structure
-    description: "Utility scripts for development"
+  ci_config:
+    id: "CI_CONFIG_RECOMMENDED"
+    category: cicd
+    description: "Automated testing and deployment"
     severity: info
     patterns:
-      - scripts/
-      - script/
-      - bin/
-    message: "No scripts folder found"
-    fix_hint: "psx fix --rule scripts_folder"
+      - .github/workflows/
+      - .gitlab-ci.yml
+      - .circleci/config.yml
+      - .travis.yml
+      - Jenkinsfile
+    message: "No CI/CD configuration found"
+    fix_hint: "psx fix --rule ci_config"
     doc_url: ""
+
+  # ============================================
+  # Quality Rules
+  # ============================================
+  pre_commit:
+    id: "PRE_COMMIT_RECOMMENDED"
+    category: quality
+    description: "Run checks before committing"
+    severity: info
+    patterns:
+      - .pre-commit-config.yaml
+      - .husky/
+      - .git/hooks/pre-commit
+    message: "No pre-commit hooks found"
+    fix_hint: "psx fix --rule pre_commit"
+    doc_url: "https://pre-commit.com"
+
+  editorconfig:
+    id: "EDITORCONFIG_RECOMMENDED"
+    category: quality
+    description: "Consistent coding style across editors"
+    severity: info
+    patterns:
+      - .editorconfig
+    message: "No .editorconfig file found"
+    fix_hint: "psx fix --rule editorconfig"
+    doc_url: "https://editorconfig.org"
+
+  code_owners:
+    id: "CODE_OWNERS_RECOMMENDED"
+    category: quality
+    description: "Define code ownership for reviews"
+    severity: info
+    patterns:
+      - CODEOWNERS
+      - .github/CODEOWNERS
+      - docs/CODEOWNERS
+    message: "No CODEOWNERS file found"
+    fix_hint: "psx fix --rule code_owners"
+    doc_url: "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
+
+  # ============================================
+  # DevOps Rules
+  # ============================================
+  dockerfile:
+    id: "DOCKERFILE_RECOMMENDED"
+    category: devops
+    description: "Container images with Docker"
+    severity: info
+    patterns:
+      - Dockerfile
+      - docker/Dockerfile
+    message: "No Dockerfile found"
+    fix_hint: "psx fix --rule dockerfile"
+    doc_url: "https://docs.docker.com/engine/reference/builder/"
+
+  dockerignore:
+    id: "DOCKERIGNORE_RECOMMENDED"
+    category: devops
+    description: "Optimize Docker builds with .dockerignore"
+    severity: info
+    patterns:
+      - .dockerignore
+    message: "No .dockerignore found"
+    fix_hint: "psx fix --rule dockerignore"
+    doc_url: "https://docs.docker.com/engine/reference/builder/#dockerignore-file"
+
+  docker_compose:
+    id: "DOCKER_COMPOSE_RECOMMENDED"
+    category: devops
+    description: "Multi-container Docker applications"
+    severity: info
+    patterns:
+      - docker-compose.yml
+      - docker-compose.yaml
+      - compose.yml
+      - compose.yaml
+    message: "No docker-compose configuration found"
+    fix_hint: "psx fix --rule docker_compose"
+    doc_url: "https://docs.docker.com/compose/"
