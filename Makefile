@@ -135,17 +135,17 @@ version:
 
 docker:
 	@echo "$(YELLOW)Building Docker image (standard)...$(NC)"
-	@docker buildx build -t psx:$(VERSION) -f Dockerfile .
+	@docker buildx build  -t psx:latest -t psx:$(VERSION) -f Dockerfile .
 	@echo "$(GREEN)✓ Docker image built: psx:latest$(NC)"
 
 docker-alpine:
 	@echo "$(YELLOW)Building Docker image (Alpine)...$(NC)"
-	@docker buildx build -t psx:$(VERSION)-alpine -f infra/Dockerfile.alpine .
+	@docker buildx build  -t psx:alpine -t psx:$(VERSION)-alpine -f infra/Dockerfile.alpine .
 	@echo "$(GREEN)✓ Docker image built: psx:alpine$(NC)"
 
 docker-scratch:
 	@echo "$(YELLOW)Building Docker image (Scratch)...$(NC)"
-	@docker buildx build -t psx:$(VERSION)-scratch -f infra/Dockerfile.scratch .
+	@docker buildx build  -t psx:scratch -t psx:$(VERSION)-scratch -f infra/Dockerfile.scratch .
 	@echo "$(GREEN)✓ Docker image built: psx:scratch$(NC)"
 
 docker-all: docker docker-alpine docker-scratch

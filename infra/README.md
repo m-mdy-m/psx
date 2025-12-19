@@ -5,7 +5,7 @@ Multiple Dockerfile variants available:
 Multi-stage build with Alpine base.
 
 ```bash
-docker buildx build  -t psx:latest .
+docker buildx build -t psx:latest .
 sudo docker run -it --rm -v "$(pwd)":/project -w /project psx:latest check
 ```
 
