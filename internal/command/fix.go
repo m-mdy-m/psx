@@ -17,11 +17,6 @@ var FixCmd = &cobra.Command{
 	Short: "Fix structural issues",
 	Long: `Automatically fix common structural issues in your project.
 
-The fix command can:
-- Create missing files (README, LICENSE, etc.)
-- Create missing folders (src/, tests/, docs/)
-- Generate configuration files
-
 Examples:
   psx fix                       # Interactive mode (asks before each fix)
   psx fix --dry-run             # Preview changes without applying
