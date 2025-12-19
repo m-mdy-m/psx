@@ -31,9 +31,6 @@ type GitignoresConfig struct {
 	Common string `yaml:"common"`
 	NodeJS string `yaml:"nodejs"`
 	Go     string `yaml:"go"`
-	Python string `yaml:"python"`
-	Rust   string `yaml:"rust"`
-	Java   string `yaml:"java"`
 }
 
 type LicensesConfig map[string]LicenseTemplate

@@ -24,7 +24,6 @@ rules:
   tests_folder: warning
   docs_folder: info
   scripts_folder: info
-  env_example: info
 
   # ============================================
   # Documentation Rules
@@ -36,7 +35,6 @@ rules:
   code_of_conduct: info
   pull_request_template: info
   issue_templates: info
-  funding: false
 
   # ============================================
   # CI/CD Rules
