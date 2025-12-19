@@ -1,14 +1,20 @@
 package resources
 
-type LanguagesConfig struct {
-	Aliases      map[string]string          `yaml:"aliases"`
-	Folders      map[string]LanguageFolders `yaml:"folders"`
-	TestPatterns map[string][]string        `yaml:"test_patterns"`
-}
+type ProjectInfo struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Author      string `yaml:"author"`
+	Email       string `yaml:"email"`
+	GitHubUser  string `yaml:"github_user,omitempty"`
+	RepoName    string `yaml:"repo_name,omitempty"`
+	License     string `yaml:"license"`
 
-type LanguageFolders struct {
-	Src   []string `yaml:"src"`
-	Tests []string `yaml:"tests"`
+	// Derived fields (not in YAML)
+	RepoURL       string `yaml:"-"`
+	Domain        string `yaml:"-"`
+	DockerImage   string `yaml:"-"`
+	SupportEmail  string `yaml:"-"`
+	SecurityEmail string `yaml:"-"`
 }
 
 type MessagesConfig struct {
@@ -44,55 +50,22 @@ type TemplatesConfig struct {
 	ADR          map[string]string `yaml:"adr"`
 	APIDocs      map[string]string `yaml:"api_docs"`
 	TestExamples map[string]string `yaml:"test_examples"`
-	Editorconfig string            `yaml:"editorconfig"`
 }
 
 type QualityToolsConfig struct {
-	Editorconfig  map[string]string `yaml:"editorconfig"`
-	Prettier      PrettierConfig    `yaml:"prettier"`
-	ESLint        ESLintConfig      `yaml:"eslint"`
-	Commitlint    CommitlintConfig  `yaml:"commitlint"`
-	Husky         HuskyConfig       `yaml:"husky"`
-	PreCommit     map[string]string `yaml:"pre_commit"`
-	LintStaged    map[string]string `yaml:"lint_staged"`
-	Gitattributes map[string]string `yaml:"gitattributes"`
-	Makefile      map[string]string `yaml:"makefile"`
-}
-
-type PrettierConfig struct {
-	Config string `yaml:"config"`
-	Ignore string `yaml:"ignore"`
-}
-
-type ESLintConfig struct {
-	Basic      string `yaml:"basic"`
-	TypeScript string `yaml:"typescript"`
-}
-
-type CommitlintConfig struct {
-	Config string `yaml:"config"`
-}
-
-type HuskyConfig struct {
-	PreCommit string `yaml:"pre_commit"`
-	CommitMsg string `yaml:"commit_msg"`
+	Editorconfig map[string]string `yaml:"editorconfig"`
+	PreCommit    map[string]string `yaml:"pre_commit"`
 }
 
 type DevOpsConfig struct {
 	Docker        DockerConfig      `yaml:"docker"`
 	DockerCompose map[string]string `yaml:"docker_compose"`
-	Kubernetes    KubernetesConfig  `yaml:"kubernetes"`
-	Nginx         map[string]string `yaml:"nginx"`
 	GitHubActions map[string]string `yaml:"github_actions"`
-	Renovate      RenovateConfig    `yaml:"renovate"`
-	Dependabot    map[string]string `yaml:"dependabot"`
 }
 
 type DockerConfig struct {
 	NodeJS DockerLanguageConfig `yaml:"nodejs"`
 	Go     DockerLanguageConfig `yaml:"go"`
-	Python DockerLanguageConfig `yaml:"python"`
-	Rust   DockerLanguageConfig `yaml:"rust"`
 }
 
 type DockerLanguageConfig struct {
@@ -111,20 +84,15 @@ type RenovateConfig struct {
 }
 
 type DocsTemplatesConfig struct {
-	Security             string            `yaml:"security"`
-	CodeOfConduct        string            `yaml:"code_of_conduct"`
-	PullRequestTemplate  string            `yaml:"pull_request_template"`
-	IssueBugReport       string            `yaml:"issue_bug_report"`
-	IssueFeatureRequest  string            `yaml:"issue_feature_request"`
-	IssueQuestion        string            `yaml:"issue_question"`
-	IssueTemplatesConfig string            `yaml:"issue_templates_config"`
-	Codeowners           string            `yaml:"codeowners"`
-	Support              string            `yaml:"support"`
-	Roadmap              string            `yaml:"roadmap"`
-	Funding              string            `yaml:"funding"`
-	FundingYML           string            `yaml:"funding_yml"`
-	ADRTemplate          string            `yaml:"adr_template"`
-	EnvExample           map[string]string `yaml:"env_example"`
+	Security             string `yaml:"security"`
+	CodeOfConduct        string `yaml:"code_of_conduct"`
+	PullRequestTemplate  string `yaml:"pull_request_template"`
+	IssueBugReport       string `yaml:"issue_bug_report"`
+	IssueFeatureRequest  string `yaml:"issue_feature_request"`
+	IssueQuestion        string `yaml:"issue_question"`
+	IssueTemplatesConfig string `yaml:"issue_templates_config"`
+	Codeowners           string `yaml:"codeowners"`
+	ADRTemplate          string `yaml:"adr_template"`
 }
 
 type ScriptsConfig struct {
@@ -143,30 +111,13 @@ type ScriptsConfig struct {
 
 type ScriptPlatformConfig map[string]string
 
-type ProjectInfo struct {
-	Name          string
-	Description   string
-	Author        string
-	Email         string
-	GitHubUser    string
-	RepoName      string
-	RepoURL       string
-	License       string
-	Domain        string
-	DockerImage   string
-	SupportEmail  string
-	SecurityEmail string
-	CurrentDir    string
+type LanguagesConfig struct {
+	Aliases      map[string]string          `yaml:"aliases"`
+	Folders      map[string]LanguageFolders `yaml:"folders"`
+	TestPatterns map[string][]string        `yaml:"test_patterns"`
 }
 
-type ProjectCache struct {
-	ProjectInfo *ProjectInfo    `yaml:"project_info"`
-	Detection   *DetectionCache `yaml:"detection"`
-}
-
-type DetectionCache struct {
-	ProjectType string          `yaml:"project_type"`
-	Version     string          `yaml:"version,omitempty"`
-	Features    map[string]bool `yaml:"features,omitempty"`
-	Files       []string        `yaml:"files,omitempty"`
+type LanguageFolders struct {
+	Src   []string `yaml:"src"`
+	Tests []string `yaml:"tests"`
 }
