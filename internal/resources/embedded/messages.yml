@@ -1,4 +1,4 @@
-# User-facing messages
+# User-facing messages for PSX
 
 exit:
   success: "Success"
@@ -9,72 +9,118 @@ exit:
 
 errors:
   config_not_found: "Configuration not found. Run 'psx init' to create one"
-  invalid_config: "Invalid configuration. Run 'psx config validate' to check"
+  invalid_config: "Invalid configuration"
   no_project: "Not in a project directory"
   permission_denied: "Permission denied"
   unknown_rule: "Unknown rule. Run 'psx rules' to list available rules"
   fix_failed: "Fix operation failed"
-  detection_failed: "Could not detect project type"
-
-help:
-  main: |
-    PSX - Project Structure Checker
-        
-        Validate and fix project structure automatically
-        
-        USAGE:
-          psx <command> [flags]
-        
-        COMMANDS:
-          check       Validate project structure
-          fix         Fix structural issues automatically
-          project     Manage project information cache
-          
-        GLOBAL FLAGS:
-          --config <file>   Use specific config file
-          --verbose, -v     Show detailed output
-          --quiet, -q       Minimal output
-          --no-color        Disable colored output
-          --help, -h        Show help
-          --version         Show version
-        
-        EXAMPLES:
-          psx check                    # Validate current directory
-          psx check --verbose          # Detailed validation
-          psx check --output json      # JSON output for CI/CD
-          psx fix                      # Fix issues interactively
-          psx fix --dry-run            # Preview fixes
-          psx fix --rule readme        # Fix specific rule
-          psx project show             # Show cached project info
-        
-        DOCUMENTATION:
-          https://github.com/m-mdy-m/psx
-        
-        SUPPORT:
-          Issues: https://github.com/m-mdy-m/psx/issues
-          Email:  bitsgenix@gmail.com
+  invalid_path: "Invalid path: %s"
+  file_not_found: "File not found: %s"
 
 check:
+  start: "Checking project: %s"
   success_all: "All %d checks passed"
   success_partial: "%d of %d checks passed"
-  start: "Checking project: %s"
   rule_check: "Checking: %s"
-
+  no_rules: "No active rules configured"
+  failed: "Validation failed: %d errors, %d warnings"
 fix:
   success_none: "No fixes needed"
   success_one: "Fixed 1 issue"
   success_many: "Fixed %d issues"
   prompt_none: "No issues to fix"
-  prompt_one: "Found 1 fixable issue. Fix it?"
-  prompt_many: "Found %d fixable issues. Fix them?"
+  prompt_one: "Found 1 fixable issue"
+  prompt_many: "Found %d fixable issues"
   dry_run: "Dry run - no changes will be made"
   interactive: "Interactive mode - confirm each fix"
   applied: "Applied fix: %s"
-
+  skipped: "Skipped: %s"
+  failed: "Failed: %s"
+  suggest: "Run 'psx fix' to fix issues automatically"
+  backup_created: "Backup created: %s"
 init:
   success: "Created configuration: %s"
+  exists: "Configuration already exists (use --force to overwrite)"
+  created: "Configuration created successfully"
 
 verbose:
   detected: "Detected: %s"
   rules_loaded: "Loaded %d rules"
   config_loaded: "Config loaded: %s"
+  checking: "Checking rule: %s"
+  fixing: "Fixing rule: %s"
+  created_file: "Created file: %s"
+  created_folder: "Created folder: %s"
+help:
+  main: |
+    PSX - Project Structure Checker
+    
+    Validate and fix project structure automatically
+    
+    USAGE:
+      psx <command> [flags]
+    
+    COMMANDS:
+      check       Validate project structure
+      fix         Fix structural issues automatically
+      project     Manage project information cache
+      
+    GLOBAL FLAGS:
+      --config <file>   Use specific config file
+      --verbose, -v     Show detailed output
+      --quiet, -q       Minimal output
+      --no-color        Disable colored output
+      --help, -h        Show help
+      --version         Show version
+    
+    EXAMPLES:
+      psx check                    # Validate current directory
+      psx check --verbose          # Detailed validation
+      psx check --output json      # JSON output for CI/CD
+      psx fix                      # Fix issues interactively
+      psx fix --dry-run            # Preview fixes
+      psx fix --rule readme        # Fix specific rule
+      psx project show             # Show cached project info
+    
+    DOCUMENTATION:
+      https://github.com/m-mdy-m/psx
+    
+    SUPPORT:
+      Issues: https://github.com/m-mdy-m/psx/issues
+      Email:  bitsgenix@gmail.com
+
+  check: |
+    Validate project structure against configured rules
+    
+    USAGE:
+      psx check [path] [flags]
+    
+    FLAGS:
+      -o, --output string     Output format: table | json (default "table")
+          --level string      Filter by severity: error | warning | info | all (default "all")
+          --fail-on string    Exit with error on: error | warning (default "error")
+    
+    EXAMPLES:
+      psx check                    # Check current directory
+      psx check ./my-project       # Check specific directory
+      psx check --verbose          # Show detailed information
+      psx check --output json      # JSON output for CI/CD
+
+  fix: |
+    Automatically fix common structural issues
+    
+    USAGE:
+      psx fix [path] [flags]
+    
+    FLAGS:
+      -i, --interactive         Ask before each fix (default true)
+          --dry-run             Preview changes without applying
+          --rule string         Fix specific rule only
+          --all                 Fix all without prompting
+          --create-backups      Create backups before modifying
+    
+    EXAMPLES:
+      psx fix                      # Interactive mode
+      psx fix --dry-run            # Preview changes
+      psx fix --rule readme        # Fix only README
+      psx fix --all                # Fix all without prompts

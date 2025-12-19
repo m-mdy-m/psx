@@ -90,20 +90,29 @@ release:
 	@echo "  2. Push: git push origin main --tags"
 	@echo "  3. Create GitHub release with build/$(BINARY_NAME)-*.tar.gz"
 
-test:
-	@echo "$(YELLOW)Running tests...$(NC)"
-	@go test -v -race -coverprofile=coverage.out ./...
-	@echo "$(GREEN)✓ Tests passed$(NC)"
+test: test-unit test-integration
 
-test-coverage: test
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "$(GREEN)Coverage report: coverage.html$(NC)"
+test-unit:
+	@echo "Running unit tests..."
+	go test -v -short ./...
 
-lint:
-	@echo "$(YELLOW)Running linters...$(NC)"
-	@which golangci-lint > /dev/null || (echo "$(RED)golangci-lint not installed$(NC)" && exit 1)
-	@golangci-lint run --timeout=5m
-	@echo "$(GREEN)✓ Lint passed$(NC)"
+test-integration:
+	@echo "Running integration tests..."
+	go test -v -run Integration ./...
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report: coverage.html"
+
+test-race:
+	@echo "Running tests with race detector..."
+	go test -v -race ./...
+lint: 
+	@echo "$(YELLOW)Running linter...$(RESET)"
+	@golangci-lint run
+	@echo "$(GREEN)✓ Lint passed$(RESET)
 
 fmt:
 	@echo "$(YELLOW)Formatting code...$(NC)"

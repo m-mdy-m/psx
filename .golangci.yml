@@ -1,0 +1,27 @@
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - misspell
+    - gocyclo
+    - dupl
+    - goconst
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+
+run:
+  timeout: 5m
+  skip-dirs:
+    - internal/config/embedded
+    - internal/resources/embedded
