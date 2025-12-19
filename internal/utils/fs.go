@@ -9,6 +9,14 @@ import (
 	"github.com/m-mdy-m/psx/internal/logger"
 )
 
+func FileExists(path string) (bool, os.FileInfo) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, nil
+	}
+	return true, info
+}
+
 func CreateFile(path string, content string) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -29,21 +37,6 @@ func CreateDir(path string) error {
 	return nil
 }
 
-func FileExists(path string) (bool, os.FileInfo) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false, nil
-	}
-	return true, info
-}
-func ReadFile(readFn func(string) ([]byte, error), path string) ([]byte, error) {
-	data, err := readFn(path)
-	if err != nil {
-		return nil, logger.Errorf("failed to read file %s: %w", path, err)
-	}
-	return data, nil
-}
-
 func IsDirEmpty(path string) (bool, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -51,32 +44,16 @@ func IsDirEmpty(path string) (bool, error) {
 	}
 	return len(entries) == 0, nil
 }
-func ReadYAML(path string, out any) error {
-	data, err := ReadFile(os.ReadFile, path)
+func LoadEmbedded[T any](name, path string, fs embed.FS) (*T, error) {
+	data, err := fs.ReadFile(path)
 	if err != nil {
-		return err
-	}
-	return UnmarshalYAML(data, path, out)
-}
-func UnmarshalYAML(data []byte, source string, out any) error {
-	if err := yaml.Unmarshal(data, out); err != nil {
-		return logger.Errorf("failed to unmarshal yaml from %s: %w", source, err)
+		return nil, logger.Errorf("failed to read %s: %w", name, err)
 	}
 
-	logger.Verbosef("Parsed YAML from %s", source)
-	return nil
-}
-func LoadEmbedded[T any](what string, parts string, EFS embed.FS) (*T, error) {
-	data, err := ReadFile(EFS.ReadFile, parts)
-	if err != nil {
-		return nil, err
+	var result T
+	if err := yaml.Unmarshal(data, &result); err != nil {
+		return nil, logger.Errorf("failed to parse %s: %w", name, err)
 	}
 
-	var v T
-	if err := UnmarshalYAML(data, parts, &v); err != nil {
-		return nil, logger.Errorf("failed to parse %s (%s): %w", parts, what, err)
-	}
-
-	logger.Verbosef("Loaded %s from %s", what, parts)
-	return &v, nil
+	return &result, nil
 }

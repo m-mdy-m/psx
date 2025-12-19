@@ -2,28 +2,26 @@ package utils
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/m-mdy-m/psx/internal/logger"
 )
 
 var stdin = bufio.NewReader(os.Stdin)
 
 func Prompt(message string) bool {
-	logger.Infof("%s [y/N]:\n> ", message)
+	fmt.Printf("%s [y/N]: ", message)
 	line, _ := stdin.ReadString('\n')
 	resp := strings.ToLower(strings.TrimSpace(line))
 	return resp == "y" || resp == "yes"
 }
-
 func PromptChoice(message string, options []string) (string, error) {
-	logger.Infof("%s\n", message)
+	fmt.Println(message)
 	for i, opt := range options {
-		logger.Infof("  %d) %s\n", i+1, opt)
+		fmt.Printf("  %d) %s\n", i+1, opt)
 	}
-	logger.Info("Choose [1]:\n> ")
+	fmt.Print("Choose [1]: ")
 
 	line, _ := stdin.ReadString('\n')
 	line = strings.TrimSpace(line)
@@ -31,18 +29,17 @@ func PromptChoice(message string, options []string) (string, error) {
 		return options[0], nil
 	}
 
-	c, err := strconv.Atoi(line)
-	if err != nil || c < 1 || c > len(options) {
+	choice, err := strconv.Atoi(line)
+	if err != nil || choice < 1 || choice > len(options) {
 		return options[0], nil
 	}
-	return options[c-1], nil
+	return options[choice-1], nil
 }
-
 func PromptInput(message string, defaultValue string) string {
 	if defaultValue != "" {
-		logger.Infof("%s [%s]:\n> ", message, defaultValue)
+		fmt.Printf("%s [%s]: ", message, defaultValue)
 	} else {
-		logger.Infof("%s:\n> ", message)
+		fmt.Printf("%s: ", message)
 	}
 
 	line, _ := stdin.ReadString('\n')
