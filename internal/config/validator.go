@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"strings"
+
+	"github.com/m-mdy-m/psx/internal/resources"
 )
 
 func IsValid(r ValidationResult) bool {
@@ -40,10 +42,6 @@ func Validate(c *Config) ValidationResult {
 		result.Warnings = append(result.Warnings, warns...)
 	}
 
-	if warns := validateFixConfig(&c.Fix); len(warns) > 0 {
-		result.Warnings = append(result.Warnings, warns...)
-	}
-
 	return result
 }
 func ValidateVersion(version int) *ValidationError {
@@ -62,30 +60,21 @@ func ValidateProjectType(pt string) []string {
 	if pt == "" {
 		return warnings
 	}
-	supportedLang := []string{
-		"javascript",
-		"go",
-	}
-	found := false
-	for _, supported := range supportedLang {
-		if pt == supported {
-			found = true
-			break
-		}
-	}
-	if !found {
+	normalized := resources.NormalizeProjectType(pt)
+
+	if normalized == "generic" {
 		warnings = append(warnings, fmt.Sprintf(
-			"project.type '%s' is not a known type (supported: %s). Will use generic rules.",
+			"project.type '%s' is not a known type. Will use generic rules.",
 			pt,
-			strings.Join(supportedLang, ", "),
 		))
+		return warnings
 	}
 	return warnings
 }
 func ValidateRules(rules map[string]RulesSeverity) ([]ValidationError, []string) {
 	errors := []ValidationError{}
 	warnings := []string{}
-	if rules == nil || len(rules) == 0 {
+	if len(rules) == 0 {
 		warnings = append(warnings, "No rules configured")
 		return errors, warnings
 	}
@@ -159,11 +148,5 @@ func validateIgnorePatterns(patterns []string) []string {
 		}
 	}
 
-	return warnings
-}
-
-func validateFixConfig(fix *FixConfig) []string {
-	warnings := []string{}
-	// Note: interactive and create_backups are just booleans, always valid
 	return warnings
 }

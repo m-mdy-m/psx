@@ -64,8 +64,3 @@ ignore:
   - build/
   - coverage/
   - .psx-project.yml
-
-# Fix behavior
-fix:
-  interactive: true
-  backup: false

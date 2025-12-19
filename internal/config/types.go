@@ -36,6 +36,7 @@ type Config struct {
 	Rules   map[string]RulesSeverity `yaml:"rules"`
 	Ignore  []string                 `yaml:"ignore,omitempty"`
 	Fix     FixConfig                `yaml:"fix,omitempty"`
+	Custom  *CustomConfig            `yaml:"custom,omitempty"`
 
 	// not in yml file
 	Path        string                 `yaml:"-"`
@@ -72,4 +73,17 @@ type RulesMetadata struct {
 type RuleConfig struct {
 	Metadata RuleMetadata
 	Severity *Severity
+}
+
+type CustomConfig struct {
+	Files   []CustomFile   `yaml:"files"`
+	Folders []CustomFolder `yaml:"folders"`
+}
+type CustomFile struct {
+	Path    string `yaml:"path"`
+	Content string `yaml:"content"`
+}
+type CustomFolder struct {
+	Path      string                 `yaml:"path"`
+	Structure map[string]interface{} `yaml:"structure"`
 }
