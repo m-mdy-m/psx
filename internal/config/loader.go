@@ -167,18 +167,12 @@ func buildConfig(userCfg *Config, projectPath string, projectType string) (*Conf
 		Ignore:      userCfg.Ignore,
 		Fix:         userCfg.Fix,
 		Path:        projectPath,
+		Custom:      userCfg.Custom,
 		ActiveRules: make(map[string]*ActiveRule),
 	}
-
-	if projectType != "" {
-		cfg.Project.Type = projectType
-	} else {
-		cfg.Project.Type = resources.NormalizeProjectType(cfg.Project.Type)
-	}
-
 	enabledCount := 0
 	disabledCount := 0
-	if userCfg.Rules == nil || len(userCfg.Rules) == 0 {
+	if len(userCfg.Rules) == 0 {
 		logger.Verbose("Using default config - enabling all rules")
 		for id, meta := range rulesMetadata.Rules {
 			cfg.ActiveRules[id] = &ActiveRule{
@@ -229,7 +223,6 @@ func buildConfig(userCfg *Config, projectPath string, projectType string) (*Conf
 	return cfg, nil
 }
 
-// GetPatterns gets patterns for a specific project type from rule metadata
 func GetPatterns(patterns any, projectType string) []string {
 	switch p := patterns.(type) {
 	case []any:
@@ -243,8 +236,6 @@ func GetPatterns(patterns any, projectType string) []string {
 		return result
 
 	case map[string]any:
-		// Language-specific patterns
-		// Try project type first
 		if projectType != "" {
 			if langPatterns, exists := p[projectType]; exists {
 				if arr, ok := langPatterns.([]any); ok {
@@ -259,7 +250,6 @@ func GetPatterns(patterns any, projectType string) []string {
 			}
 		}
 
-		// Fallback to generic "*"
 		if genericPatterns, exists := p["*"]; exists {
 			if arr, ok := genericPatterns.([]any); ok {
 				result := make([]string, 0, len(arr))
