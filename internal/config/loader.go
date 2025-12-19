@@ -8,102 +8,59 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/resources"
+	"github.com/m-mdy-m/psx/internal/utils"
 )
 
 //go:embed embedded/*.yml
 var configFS embed.FS
 
 var (
-	globalMetadata *RulesMetadata
-	defaultConfig  *Config
+	rulesMetadata *RulesMetadata
+	defaultConfig *Config
 )
-
-func GetRulesMetadata() *RulesMetadata {
-	return globalMetadata
-}
 
 func init() {
 	var err error
-	globalMetadata, err = LoadRulesMetadata()
+
+	rulesMetadata, err = utils.LoadEmbedded[RulesMetadata]("rules metadata", "embedded/rules.yml", configFS)
 	if err != nil {
-		logger.Errorf("Failed to load rules metadata: %v", err)
-		os.Exit(1)
+		logger.Fatalf("Failed to load rules metadata: %v", err)
 	}
-	logger.Verbose(fmt.Sprintf("Loaded %d rules from metadata", len(globalMetadata.Rules)))
-	defaultConfig, err = LoadDefaultConfig()
+	logger.Verbose(fmt.Sprintf("Loaded %d rules from metadata", len(rulesMetadata.Rules)))
+	defaultConfig, err = utils.LoadEmbedded[Config]("default config", "embedded/psx.default.yml", configFS)
 	if err != nil {
-		logger.Errorf("Failed to load default config: %v", err)
-		os.Exit(1)
+		logger.Fatalf("Failed to load default config: %v", err)
 	}
 	logger.Verbose("Default configuration loaded")
 }
-
-func loadEmbedded[T any](what string, parts string) (*T, error) {
-	data, err := configFS.ReadFile(parts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read %s (%s): %w", parts, what, err)
-	}
-
-	var v T
-	if err := yaml.Unmarshal(data, &v); err != nil {
-		return nil, fmt.Errorf("failed to parse %s (%s): %w", parts, what, err)
-	}
-
-	logger.Verbose(fmt.Sprintf("Loaded %s from %s", what, parts))
-	return &v, nil
+func GetRulesMetadata() *RulesMetadata {
+	return rulesMetadata
 }
-
-func LoadRulesMetadata() (*RulesMetadata, error) {
-	md, err := loadEmbedded[RulesMetadata]("rules metadata", "embedded/rules.yml")
-	if err != nil {
-		return nil, err
-	}
-	logger.Verbose("Loaded rules metadata: " + fmt.Sprint(len(md.Rules)) + " rules")
-	return md, nil
-}
-
-func LoadDefaultConfig() (*Config, error) {
-	cfg, err := loadEmbedded[Config]("default config", "embedded/psx.default.yml")
-	if err != nil {
-		return nil, err
-	}
-	logger.Verbose("Loaded default configuration")
-	return cfg, nil
-}
-
-func Load(cf string, pp string) (*Config, error) {
-	var (
-		err        error
-		userConfig *Config
-	)
-
-	// Find config file if not specified
-	if cf == "" {
+func Load(configFile string, projectPath string) (*Config, error) {
+	var userConfig *Config
+	var err error
+	if configFile == "" {
 		logger.Verbose("Searching for config file...")
-		found, err := FindConfigFile(pp)
-		if err != nil || found == "" {
-			logger.Info("No config file found, using default")
-			return buildConfig(defaultConfig, pp, true)
+		configFile, err = FindConfigFile(projectPath)
+		if err != nil || configFile == "" {
+			logger.Info("No config file found, using defaults")
+			return buildConfig(defaultConfig, projectPath, "")
 		}
-		cf = found
-		logger.Verbose(fmt.Sprintf("Found config file: %s", cf))
+		logger.Verbose(fmt.Sprintf("Found config file: %s", configFile))
 	}
-
-	// Read user config
-	userConfig, err = ReadYamlFile(cf)
+	userConfig, err = readConfigFile(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config from %s: %w", cf, err)
+		return nil, fmt.Errorf("failed to load config from %s: %w", configFile, err)
 	}
 
-	logger.Verbose(fmt.Sprintf("Loaded user config from: %s", cf))
+	logger.Verbose(fmt.Sprintf("Loaded user config from: %s", configFile))
 
-	// Validate
 	result := Validate(userConfig)
-
 	if HasWarnings(result) {
 		logger.Warning("Configuration warnings:")
-		for _, warnings := range result.Warnings {
-			logger.Warning(warnings)
+		for _, warning := range result.Warnings {
+			logger.Warning(warning)
 		}
 	}
 	if !IsValid(result) {
@@ -115,10 +72,12 @@ func Load(cf string, pp string) (*Config, error) {
 	}
 
 	logger.Success("Configuration loaded and validated")
-	return buildConfig(userConfig, pp, false)
+	projectType := resources.NormalizeProjectType(userConfig.Project.Type)
+
+	return buildConfig(userConfig, projectPath, projectType)
 }
 
-func FindConfigFile(pp string) (string, error) {
+func FindConfigFile(projectPath string) (string, error) {
 	candidates := []string{
 		"psx.yml",
 		".psx.yml",
@@ -126,23 +85,20 @@ func FindConfigFile(pp string) (string, error) {
 		".psx.yaml",
 	}
 
-	logger.Verbose(fmt.Sprintf("Looking for config in: %s", pp))
+	logger.Verbose(fmt.Sprintf("Looking for config in: %s", projectPath))
 
-	// Check current directory first
+	// Check current directory
 	for _, name := range candidates {
-		path := filepath.Join(pp, name)
-		logger.Verbose(fmt.Sprintf("Checking: %s", path))
-		if info, err := os.Stat(path); err == nil {
-			if !info.IsDir() {
-				logger.Verbose(fmt.Sprintf("Found config: %s", path))
-				return path, nil
-			}
+		path := filepath.Join(projectPath, name)
+		if exists, info := utils.FileExists(path); exists && !info.IsDir() {
+			logger.Verbose(fmt.Sprintf("Found config: %s", path))
+			return path, nil
 		}
 	}
 
 	// Check parent directories up to git root
-	current := pp
-	maxDepth := 10 // Prevent infinite loop
+	current := projectPath
+	maxDepth := 10
 	depth := 0
 
 	for depth < maxDepth {
@@ -151,13 +107,13 @@ func FindConfigFile(pp string) (string, error) {
 			break
 		}
 
-		// Check if this is git root
+		// Check if git root
 		gitPath := filepath.Join(current, ".git")
-		if info, err := os.Stat(gitPath); err == nil && info.IsDir() {
+		if exists, info := utils.FileExists(gitPath); exists && info.IsDir() {
 			logger.Verbose(fmt.Sprintf("Found git root: %s", current))
 			for _, name := range candidates {
 				path := filepath.Join(current, name)
-				if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				if exists, info := utils.FileExists(path); exists && !info.IsDir() {
 					logger.Verbose(fmt.Sprintf("Found config in git root: %s", path))
 					return path, nil
 				}
@@ -169,14 +125,13 @@ func FindConfigFile(pp string) (string, error) {
 		depth++
 	}
 
-	// Check home directory as last resort
+	// Check home directory
 	home, err := os.UserHomeDir()
 	if err == nil {
-		cdir := filepath.Join(home, ".config", "psx")
-		logger.Verbose(fmt.Sprintf("Checking home config dir: %s", cdir))
+		configDir := filepath.Join(home, ".config", "psx")
 		for _, name := range candidates {
-			path := filepath.Join(cdir, name)
-			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			path := filepath.Join(configDir, name)
+			if exists, info := utils.FileExists(path); exists && !info.IsDir() {
 				logger.Verbose(fmt.Sprintf("Found config in home: %s", path))
 				return path, nil
 			}
@@ -187,45 +142,59 @@ func FindConfigFile(pp string) (string, error) {
 	return "", fmt.Errorf("no config file found")
 }
 
-func buildConfig(uc *Config, pp string, isDefault bool) (*Config, error) {
-	config := &Config{
-		Version:     uc.Version,
-		Project:     uc.Project,
-		Rules:       uc.Rules,
-		Ignore:      uc.Ignore,
-		Fix:         uc.Fix,
-		Path:        pp,
+// readConfigFile reads and parses a config file
+func readConfigFile(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	logger.Verbose(fmt.Sprintf("Successfully parsed YAML from %s", path))
+	return &cfg, nil
+}
+
+// buildConfig builds a complete config with active rules
+func buildConfig(userCfg *Config, projectPath string, projectType string) (*Config, error) {
+	cfg := &Config{
+		Version:     userCfg.Version,
+		Project:     userCfg.Project,
+		Rules:       userCfg.Rules,
+		Ignore:      userCfg.Ignore,
+		Fix:         userCfg.Fix,
+		Path:        projectPath,
 		ActiveRules: make(map[string]*ActiveRule),
+	}
+
+	if projectType != "" {
+		cfg.Project.Type = projectType
+	} else {
+		cfg.Project.Type = resources.NormalizeProjectType(cfg.Project.Type)
 	}
 
 	enabledCount := 0
 	disabledCount := 0
-
-	// If using default config, enable ALL rules from metadata
-	if isDefault {
+	if userCfg.Rules == nil || len(userCfg.Rules) == 0 {
 		logger.Verbose("Using default config - enabling all rules")
-		for id, meta := range globalMetadata.Rules {
-			severity := meta.DefaultSeverity
-			config.ActiveRules[id] = &ActiveRule{
+		for id, meta := range rulesMetadata.Rules {
+			cfg.ActiveRules[id] = &ActiveRule{
 				ID:       id,
 				Metadata: meta,
-				Severity: severity,
+				Severity: meta.DefaultSeverity,
 			}
 			enabledCount++
-			logger.Verbose(fmt.Sprintf("Rule %s enabled (default) with severity: %s", id, severity))
+			logger.Verbose(fmt.Sprintf("Rule %s enabled (default) with severity: %s", id, meta.DefaultSeverity))
 		}
 	} else {
-		// User config: ONLY enable rules explicitly listed in config
 		logger.Verbose("Using user config - enabling only specified rules")
 
-		if uc.Rules == nil || len(uc.Rules) == 0 {
-			logger.Warning("No rules configured in user config")
-			return config, nil
-		}
-
-		for id, userSev := range uc.Rules {
-			// Get metadata for this rule
-			meta, exists := globalMetadata.Rules[id]
+		for id, userSev := range userCfg.Rules {
+			// Get metadata
+			meta, exists := rulesMetadata.Rules[id]
 			if !exists {
 				logger.Warning(fmt.Sprintf("Unknown rule '%s' - skipping", id))
 				continue
@@ -238,7 +207,7 @@ func buildConfig(uc *Config, pp string, isDefault bool) (*Config, error) {
 				continue
 			}
 
-			// If severity is nil, rule is disabled
+			// If disabled
 			if severity == nil {
 				logger.Verbose(fmt.Sprintf("Rule %s is disabled", id))
 				disabledCount++
@@ -246,7 +215,7 @@ func buildConfig(uc *Config, pp string, isDefault bool) (*Config, error) {
 			}
 
 			// Enable rule
-			config.ActiveRules[id] = &ActiveRule{
+			cfg.ActiveRules[id] = &ActiveRule{
 				ID:       id,
 				Metadata: meta,
 				Severity: *severity,
@@ -257,29 +226,14 @@ func buildConfig(uc *Config, pp string, isDefault bool) (*Config, error) {
 	}
 
 	logger.Verbose(fmt.Sprintf("Config built: %d enabled, %d disabled rules", enabledCount, disabledCount))
-	return config, nil
+	return cfg, nil
 }
 
-func ReadYamlFile(args string) (*Config, error) {
-	data, err := os.ReadFile(args)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	var cfg Config
-
-	if err := yaml.Unmarshal([]byte(data), &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
-	}
-
-	logger.Verbose(fmt.Sprintf("Successfully parsed YAML from %s", args))
-
-	return &cfg, nil
-}
-
+// GetPatterns gets patterns for a specific project type from rule metadata
 func GetPatterns(patterns any, projectType string) []string {
 	switch p := patterns.(type) {
 	case []any:
+		// Simple list of patterns
 		result := make([]string, 0, len(p))
 		for _, item := range p {
 			if s, ok := item.(string); ok {
@@ -289,6 +243,8 @@ func GetPatterns(patterns any, projectType string) []string {
 		return result
 
 	case map[string]any:
+		// Language-specific patterns
+		// Try project type first
 		if projectType != "" {
 			if langPatterns, exists := p[projectType]; exists {
 				if arr, ok := langPatterns.([]any); ok {
@@ -302,6 +258,8 @@ func GetPatterns(patterns any, projectType string) []string {
 				}
 			}
 		}
+
+		// Fallback to generic "*"
 		if genericPatterns, exists := p["*"]; exists {
 			if arr, ok := genericPatterns.([]any); ok {
 				result := make([]string, 0, len(arr))

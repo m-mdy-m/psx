@@ -1,4 +1,4 @@
-package commond
+package command
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/m-mdy-m/psx/internal/reporter"
 	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
-	"github.com/m-mdy-m/psx/internal/shared"
+	"github.com/m-mdy-m/psx/internal/utils"
 )
 
 var CheckCmd = &cobra.Command{
@@ -20,20 +20,11 @@ var CheckCmd = &cobra.Command{
 	Short: "Validate project structure",
 	Long: `Validate project structure against configured rules.
 
-PSX checks for:
-- Essential files (README, LICENSE, .gitignore)
-- Project structure (src/, tests/, docs/ folders)
-- Documentation requirements
-- CI/CD configuration
-- Code quality tools
-
 Examples:
   psx check                       # Check current directory
   psx check ./my-project          # Check specific directory
   psx check --verbose             # Show detailed information
-  psx check --output json         # JSON output for CI/CD
-  psx check --level error         # Only show errors
-  psx check --fail-on warning     # Fail on warnings too`,
+  psx check --output json         # JSON output for CI/CD`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runCheckCommand,
 }
@@ -53,34 +44,32 @@ func init() {
 }
 
 func runCheckCommand(cmd *cobra.Command, args []string) error {
-	// Load project context
 	ctx, err := cmdctx.LoadProject(args)
 	if err != nil {
 		return err
 	}
 
 	f := flags.GetFlags()
-
-	// Verbose output
-	logger.Verbose(resources.CheckStart(ctx.Path.Abs))
-	logger.Verbose(resources.VerboseDetected(ctx.Detection.Type.Primary))
-	logger.Verbose(resources.VerboseRulesLoaded(len(ctx.Config.ActiveRules)))
-	logger.Verbose(resources.VerboseConfigLoaded(ctx.Config.Path))
-
-	// Execute rules
-	engine := rules.NewEngine(ctx.Config, ctx.Detection)
-	result, err := engine.Execute()
+	logger.Verbose(resources.FormatMessage("check", "start", ctx.Path.Abs))
+	logger.Verbose(fmt.Sprintf("Project type: %s", ctx.ProjectType))
+	logger.Verbose(fmt.Sprintf("Active rules: %d", len(ctx.Config.ActiveRules)))
+	if ctx.Config.Path != "" {
+		logger.Verbose(fmt.Sprintf("Config: %s", ctx.Config.Path))
+	}
+	rulesCtx := &rules.Context{
+		ProjectPath: ctx.Path.Abs,
+		ProjectType: ctx.ProjectType,
+		ProjectInfo: ctx.ProjectInfo,
+		Config:      ctx.Config,
+	}
+	result, err := rules.Execute(ctx.Config, rulesCtx)
 	if err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
-
-	// Generate report
 	rep := reporter.New(f.Check.OutputFormat, result)
 	if err := rep.Report(); err != nil {
 		return fmt.Errorf("report generation failed: %w", err)
 	}
-
-	// Determine exit code
 	return determineExitCode(result, f.Check.FailOn)
 }
 
@@ -104,9 +93,9 @@ func determineExitCode(result *rules.ExecutionResult, failOn string) error {
 	if shouldFail {
 		if !f.GlobalFlags.Quiet && result.Summary.Errors > 0 {
 			fmt.Println()
-			logger.Info("Run 'psx fix' to fix issues automatically")
+			logger.Info(resources.GetMessage("fix", "suggest"))
 		}
-		os.Exit(shared.ExitFailed)
+		os.Exit(utils.ExitFailed)
 	}
 
 	return nil
