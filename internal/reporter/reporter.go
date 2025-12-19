@@ -7,18 +7,19 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/m-mdy-m/psx/internal/checker"
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
 )
 
+// Reporter generates validation reports
 type Reporter struct {
 	format string
 	result *rules.ExecutionResult
 }
 
+// New creates a new reporter
 func New(format string, result *rules.ExecutionResult) *Reporter {
 	return &Reporter{
 		format: format,
@@ -26,6 +27,7 @@ func New(format string, result *rules.ExecutionResult) *Reporter {
 	}
 }
 
+// Report generates and outputs the report
 func (r *Reporter) Report() error {
 	switch r.format {
 	case "table":
@@ -37,13 +39,14 @@ func (r *Reporter) Report() error {
 	}
 }
 
+// reportTable generates human-readable table output
 func (r *Reporter) reportTable() error {
 	f := flags.GetFlags()
 
 	// Filter and group results
-	errors := []checker.RuleResult{}
-	warnings := []checker.RuleResult{}
-	infos := []checker.RuleResult{}
+	errors := []rules.RuleResult{}
+	warnings := []rules.RuleResult{}
+	infos := []rules.RuleResult{}
 
 	for _, result := range r.result.Results {
 		if result.Passed {
@@ -77,15 +80,15 @@ func (r *Reporter) reportTable() error {
 
 	// Print sections
 	if len(errors) > 0 {
-		printSection("ERRORS", errors, config.SeverityError)
+		r.printSection("ERRORS", errors, config.SeverityError)
 	}
 
 	if len(warnings) > 0 {
-		printSection("WARNINGS", warnings, config.SeverityWarning)
+		r.printSection("WARNINGS", warnings, config.SeverityWarning)
 	}
 
 	if len(infos) > 0 && f.GlobalFlags.Verbose {
-		printSection("INFO", infos, config.SeverityInfo)
+		r.printSection("INFO", infos, config.SeverityInfo)
 	}
 
 	// Summary
@@ -97,9 +100,10 @@ func (r *Reporter) reportTable() error {
 	return nil
 }
 
+// reportJSON generates machine-readable JSON output
 func (r *Reporter) reportJSON() error {
 	output := map[string]any{
-		"status": r.result.Status,
+		"status": string(r.result.Status),
 		"summary": map[string]int{
 			"total":    r.result.Summary.Total,
 			"passed":   r.result.Summary.Passed,
@@ -130,7 +134,7 @@ func (r *Reporter) formatResultsForJSON() []map[string]any {
 		results = append(results, map[string]any{
 			"rule_id":  result.RuleID,
 			"passed":   result.Passed,
-			"severity": result.Severity,
+			"severity": string(result.Severity),
 			"message":  result.Message,
 			"fix_hint": result.FixHint,
 			"doc_url":  result.DocURL,
@@ -138,6 +142,42 @@ func (r *Reporter) formatResultsForJSON() []map[string]any {
 	}
 
 	return results
+}
+
+func (r *Reporter) printSection(title string, results []rules.RuleResult, severity config.Severity) {
+	f := flags.GetFlags()
+
+	// Section header
+	icon := getSeverityIcon(severity)
+
+	if f.GlobalFlags.NoColor {
+		fmt.Printf("%s %s (%d)\n", icon, title, len(results))
+	} else {
+		c := getSeverityColor(severity)
+		c.Printf("%s %s (%d)\n", icon, title, len(results))
+	}
+
+	fmt.Println()
+
+	// Results
+	for _, result := range results {
+		fmt.Printf("  %s %s\n", icon, result.RuleID)
+
+		if !f.GlobalFlags.Quiet {
+			fmt.Printf("      %s\n", result.Message)
+		}
+
+		if f.GlobalFlags.Verbose {
+			if result.FixHint != "" {
+				fmt.Printf("      Fix: %s\n", result.FixHint)
+			}
+			if result.DocURL != "" {
+				fmt.Printf("      Docs: %s\n", result.DocURL)
+			}
+		}
+	}
+
+	fmt.Println()
 }
 
 func (r *Reporter) printSummary() {
@@ -153,7 +193,8 @@ func (r *Reporter) printSummary() {
 		if errors > 0 || warnings > 0 {
 			fmt.Printf("Result: %d errors, %d warnings\n", errors, warnings)
 		} else {
-			fmt.Println(resources.CheckSuccess(passed, total))
+			msg := resources.FormatMessage("check", "success_all", passed)
+			fmt.Println(msg)
 		}
 	} else {
 		// Detailed summary
@@ -179,14 +220,14 @@ func (r *Reporter) printStatus() {
 	var statusColor *color.Color
 
 	switch r.result.Status {
-	case checker.StatusPassed:
-		statusText = "PASSED"
+	case rules.StatusPassed:
+		statusText = "PASSED ✓"
 		statusColor = color.New(color.FgGreen)
-	case checker.StatusWarnings:
-		statusText = "PASSED (with warnings)"
+	case rules.StatusWarnings:
+		statusText = "PASSED (with warnings) ⚠"
 		statusColor = color.New(color.FgYellow)
-	case checker.StatusFailed:
-		statusText = "FAILED"
+	case rules.StatusFailed:
+		statusText = "FAILED ✗"
 		statusColor = color.New(color.FgRed)
 	}
 
@@ -195,42 +236,6 @@ func (r *Reporter) printStatus() {
 	} else {
 		statusColor.Println(statusText)
 	}
-}
-
-func printSection(title string, results []checker.RuleResult, severity config.Severity) {
-	f := flags.GetFlags()
-
-	// Section header
-	icon := getSeverityIcon(severity)
-
-	if f.GlobalFlags.NoColor {
-		fmt.Printf("%s %s (%d)\n", icon, title, len(results))
-	} else {
-		color := getSeverityColor(severity)
-		color.Printf("%s %s (%d)\n", icon, title, len(results))
-	}
-
-	fmt.Println()
-
-	// Results
-	for _, result := range results {
-		fmt.Printf("  %s %s\n", icon, result.RuleID)
-
-		if !f.GlobalFlags.Quiet {
-			fmt.Printf("      %s\n", result.Message)
-		}
-
-		if f.GlobalFlags.Verbose {
-			if result.FixHint != "" {
-				fmt.Printf("      Fix: %s\n", result.FixHint)
-			}
-			if result.DocURL != "" {
-				fmt.Printf("      Docs: %s\n", result.DocURL)
-			}
-		}
-	}
-
-	fmt.Println()
 }
 
 func getSeverityIcon(severity config.Severity) string {

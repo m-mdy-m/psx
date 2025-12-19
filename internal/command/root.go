@@ -1,4 +1,4 @@
-package commond
+package command
 
 import (
 	"os"
@@ -8,10 +8,10 @@ import (
 
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/resources"
-	"github.com/m-mdy-m/psx/internal/shared"
+	"github.com/m-mdy-m/psx/internal/utils"
 )
 
-var root = &cobra.Command{
+var rootCmd = &cobra.Command{
 	Use:   "psx",
 	Short: "PSX - Project Structure Checker",
 	Long: `PSX validates and standardizes project structures across different
@@ -23,72 +23,63 @@ Examples:
   psx project show           # Show cached project info
 
 Documentation: https://github.com/m-mdy-m/psx`,
-	Version:           "", // Set in Exec()
-	SilenceUsage:      true,
-	SilenceErrors:     true,
-	PersistentPreRun:  preRun,
+	Version:          "", // Set in Exec()
+	SilenceUsage:     true,
+	SilenceErrors:    true,
+	PersistentPreRun: preRun,
 }
 
-func Exec(version string) error {
-	root.Version = version
-
+func Execute(version string) error {
+	rootCmd.Version = version
 	if len(os.Args) == 2 {
 		switch os.Args[1] {
 		case "--help", "-h", "help":
-			resources.HelpMain()
+			resources.GetMessage("help", "main")
 			return nil
 		case "--version", "-v", "version":
-			shared.Version(version)
+			utils.Version(version)
 			return nil
 		}
 	}
 
-	return root.Execute()
+	return rootCmd.Execute()
+}
+
+func init() {
+	initGlobalFlags()
+	rootCmd.AddCommand(CheckCmd)
+	rootCmd.AddCommand(FixCmd)
+}
+
+func initGlobalFlags() {
+	f := flags.GetFlags()
+	df := flags.DefaultValues.GlobalFlags
+
+	rootCmd.PersistentFlags().StringVar(&f.GlobalFlags.ConfigFile, "config", df.ConfigFile,
+		"config file path")
+
+	rootCmd.PersistentFlags().BoolVarP(&f.GlobalFlags.Verbose, "verbose", "v", df.Verbose,
+		"verbose output")
+
+	rootCmd.PersistentFlags().BoolVarP(&f.GlobalFlags.Quiet, "quiet", "q", df.Quiet,
+		"quiet mode")
+
+	rootCmd.PersistentFlags().BoolVar(&f.GlobalFlags.NoColor, "no-color", df.NoColor,
+		"disable colors")
 }
 
 func preRun(cmd *cobra.Command, args []string) {
 	f := flags.GetFlags()
-
-	// Disable colors if requested or not a TTY
 	if f.GlobalFlags.NoColor || !isTerminal() {
 		color.NoColor = true
 	}
-
-	// CI detection
 	if os.Getenv("CI") != "" {
 		f.GlobalFlags.NoColor = true
 		color.NoColor = true
 	}
 }
 
-
-func initGlobalFlags() {
-	f := flags.GetFlags()
-	df := flags.DefaultValues.GlobalFlags
-
-	root.PersistentFlags().StringVar(&f.GlobalFlags.ConfigFile, "config", df.ConfigFile,
-		"config file path")
-
-	root.PersistentFlags().BoolVarP(&f.GlobalFlags.Verbose, "verbose", "v", df.Verbose,
-		"verbose output")
-
-	root.PersistentFlags().BoolVarP(&f.GlobalFlags.Quiet, "quiet", "q", df.Quiet,
-		"quiet mode")
-
-	root.PersistentFlags().BoolVar(&f.GlobalFlags.NoColor, "no-color", df.NoColor,
-		"disable colors")
-}
-
 func isTerminal() bool {
 	fileInfo, _ := os.Stdout.Stat()
 	return (fileInfo.Mode() & os.ModeCharDevice) != 0
-}
-
-func init() {
-	initGlobalFlags()
-
-	// Add all commands
-	root.AddCommand(CheckCmd)
-	root.AddCommand(FixCmd)
-	root.AddCommand(ProjectCmd)
 }
