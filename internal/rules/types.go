@@ -5,29 +5,16 @@ import (
 	"github.com/m-mdy-m/psx/internal/resources"
 )
 
-type Fixer struct {
-	ctx         *Context
-	interactive bool
-	dryRun      bool
-	projectInfo *resources.ProjectInfo
+type Checker struct {
+	ctx *Context
 }
-type FixSummary struct {
-	Total   int
-	Fixed   int
-	Skipped int
-	Failed  int
-	Changes int
+type Context struct {
+	ProjectPath string
+	ProjectType string
+	ProjectInfo *resources.ProjectInfo
+	Config      *config.Config
 }
-
-type FixResult struct {
-	RuleID  string
-	Fixed   bool
-	Skipped bool
-	Error   error
-	Changes []string
-}
-
-type CheckResult struct {
+type RuleResult struct {
 	RuleID   string
 	Passed   bool
 	Severity config.Severity
@@ -35,49 +22,51 @@ type CheckResult struct {
 	FixHint  string
 	DocURL   string
 }
-type Context struct {
-	ProjectPath string
-	ProjectType string
+type ExecutionResult struct {
+	Context *Context
+	Results []RuleResult
+	Summary Summary
+	Status  Status
 }
-type Rule struct {
-	ID       string
-	Type     RuleType
-	Category string
-	Severity config.Severity
-	Patterns map[string][]string
-	FixSpec  FixSpec
+type Summary struct {
+	Total    int
+	Passed   int
+	Errors   int
+	Warnings int
+	Info     int
 }
-
-type FixSpec struct {
-	Type        FixType
-	Prompt      string
-	CustomCheck func(*Context) (*CheckResult, error)
-	CustomFix   func(*Context) error
-}
-
-type RuleType int
+type Status string
 
 const (
-	RuleTypeFile RuleType = iota
-	RuleTypeFolder
-	RuleTypeMulti
+	StatusPassed   Status = "passed"
+	StatusWarnings Status = "warnings"
+	StatusFailed   Status = "failed"
 )
 
-type FixType int
+type FixResult struct {
+	RuleID  string
+	Fixed   bool
+	Skipped bool
+	Error   error
+	Changes []Change
+}
+type Change struct {
+	Type        ChangeType
+	Path        string
+	Description string
+	Content     string
+}
+type ChangeType string
 
 const (
-	FixTypeFile FixType = iota
-	FixTypeFolder
-	FixTypeMulti
+	ChangeCreateFile   ChangeType = "create_file"
+	ChangeCreateFolder ChangeType = "create_folder"
+	ChangeModifyFile   ChangeType = "modify_file"
 )
 
-type CheckSpec struct {
-	GetPatterns    func(*config.RuleMetadata, string) []string
-	Validator      ValidatorFunc
-	SuccessMessage string
-	FailMessage    string
+type FixContext struct {
+	Context       *Context
+	Interactive   bool
+	DryRun        bool
+	CreateBackups bool
 }
-type Checker struct {
-	ctx *Context
-}
-type ValidatorFunc func(ctx *Context, fullPath string, info any) (bool, string, error)
