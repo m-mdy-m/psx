@@ -2,6 +2,64 @@
 
 # Docker
 docker:
+  generic:
+    dockerfile: |
+      # Build stage
+      FROM alpine:latest
+
+      WORKDIR /app
+
+      # Copy your application files
+      COPY . .
+
+      # Install dependencies and build if needed
+      # RUN your-build-commands
+
+      EXPOSE 8080
+
+      CMD ["sh", "-c", "echo 'Configure your application start command'"]
+
+    dockerignore: |
+      # Version control
+      .git/
+      .gitignore
+      .gitattributes
+
+      # CI/CD
+      .github/
+      .gitlab-ci.yml
+      .travis.yml
+
+      # IDE
+      .vscode/
+      .idea/
+      *.swp
+      *.swo
+
+      # OS
+      .DS_Store
+      Thumbs.db
+
+      # Build artifacts
+      build/
+      dist/
+      *.exe
+
+      # Docs
+      docs/
+      *.md
+      !README.md
+
+      # Tests
+      tests/
+      test/
+      **/*_test.*
+      **/*.test.*
+
+      # Misc
+      .env*
+      !.env.example
+
   nodejs:
     dockerfile: |
       # Build stage
@@ -46,6 +104,7 @@ docker:
       node_modules/
       npm-debug.log*
       yarn-error.log*
+      pnpm-debug.log*
 
       # Build
       dist/
@@ -54,6 +113,7 @@ docker:
 
       # Environment
       .env*
+      !.env.example
 
       # Git
       .git/
@@ -66,9 +126,14 @@ docker:
       # Testing
       coverage/
       .nyc_output/
+      test/
+      tests/
+      **/*.test.js
+      **/*.test.ts
 
       # Misc
       *.md
+      !README.md
       .DS_Store
 
   go:
@@ -86,7 +151,7 @@ docker:
       COPY . .
 
       # Build
-      RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+      RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/app
 
       # Production stage
       FROM alpine:latest
@@ -123,9 +188,11 @@ docker:
       # Testing
       coverage.txt
       coverage.html
+      **/*_test.go
 
       # Misc
       *.md
+      !README.md
       .DS_Store
 
 # Docker Compose
@@ -173,3 +240,261 @@ docker_compose:
 
     volumes:
       postgres_data:
+
+cicd:
+  github_actions:
+    nodejs: |
+      name: CI/CD
+
+      on:
+        push:
+          branches: [main, develop]
+        pull_request:
+          branches: [main]
+
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+
+          strategy:
+            matrix:
+              node-version: [16.x, 18.x, 20.x]
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                node-version: ${{ matrix.node-version }}
+                cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run linter
+              run: npm run lint
+
+            - name: Run tests
+              run: npm test
+
+            - name: Build
+              run: npm run build
+
+        deploy:
+          needs: test
+          runs-on: ubuntu-latest
+          if: github.ref == 'refs/heads/main'
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Deploy
+              run: echo "Add your deployment steps here"
+
+    go: |
+      name: CI/CD
+
+      on:
+        push:
+          branches: [main, develop]
+        pull_request:
+          branches: [main]
+
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+
+          strategy:
+            matrix:
+              go-version: [1.21.x, 1.22.x]
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Go ${{ matrix.go-version }}
+              uses: actions/setup-go@v4
+              with:
+                go-version: ${{ matrix.go-version }}
+
+            - name: Install dependencies
+              run: go mod download
+
+            - name: Run tests
+              run: go test -v -race ./...
+
+            - name: Run linter
+              uses: golangci/golangci-lint-action@v3
+              with:
+                version: latest
+
+            - name: Build
+              run: go build -v ./...
+
+        deploy:
+          needs: test
+          runs-on: ubuntu-latest
+          if: github.ref == 'refs/heads/main'
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Deploy
+              run: echo "Add your deployment steps here"
+
+    generic: |
+      name: CI/CD
+
+      on:
+        push:
+          branches: [main, develop]
+        pull_request:
+          branches: [main]
+
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Run tests
+              run: echo "Add your test commands here"
+
+            - name: Build
+              run: echo "Add your build commands here"
+
+        deploy:
+          needs: test
+          runs-on: ubuntu-latest
+          if: github.ref == 'refs/heads/main'
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Deploy
+              run: echo "Add your deployment steps here"
+
+  gitlab_ci:
+    nodejs: |
+      stages:
+        - test
+        - build
+        - deploy
+
+      variables:
+        NODE_VERSION: "18"
+
+      cache:
+        paths:
+          - node_modules/
+
+      test:
+        stage: test
+        image: node:${NODE_VERSION}
+        script:
+          - npm ci
+          - npm run lint
+          - npm test
+        only:
+          - merge_requests
+          - main
+          - develop
+
+      build:
+        stage: build
+        image: node:${NODE_VERSION}
+        script:
+          - npm ci
+          - npm run build
+        artifacts:
+          paths:
+            - dist/
+        only:
+          - main
+          - develop
+
+      deploy:
+        stage: deploy
+        script:
+          - echo "Add your deployment steps here"
+        only:
+          - main
+        when: manual
+
+    go: |
+      stages:
+        - test
+        - build
+        - deploy
+
+      variables:
+        GO_VERSION: "1.21"
+
+      cache:
+        paths:
+          - .cache
+
+      test:
+        stage: test
+        image: golang:${GO_VERSION}
+        script:
+          - go mod download
+          - go test -v -race ./...
+          - go vet ./...
+        only:
+          - merge_requests
+          - main
+          - develop
+
+      build:
+        stage: build
+        image: golang:${GO_VERSION}
+        script:
+          - go mod download
+          - go build -v ./...
+        artifacts:
+          paths:
+            - build/
+        only:
+          - main
+          - develop
+
+      deploy:
+        stage: deploy
+        script:
+          - echo "Add your deployment steps here"
+        only:
+          - main
+        when: manual
+
+    generic: |
+      stages:
+        - test
+        - build
+        - deploy
+
+      test:
+        stage: test
+        script:
+          - echo "Add your test commands here"
+        only:
+          - merge_requests
+          - main
+          - develop
+
+      build:
+        stage: build
+        script:
+          - echo "Add your build commands here"
+        only:
+          - main
+          - develop
+
+      deploy:
+        stage: deploy
+        script:
+          - echo "Add your deployment steps here"
+        only:
+          - main
+        when: manual

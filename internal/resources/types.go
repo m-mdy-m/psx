@@ -53,11 +53,18 @@ type QualityToolsConfig struct {
 type DevOpsConfig struct {
 	Docker        DockerConfig      `yaml:"docker"`
 	DockerCompose map[string]string `yaml:"docker_compose"`
+	CICD          CICDConfig        `yaml:"cicd"`
+}
+type CICDConfig struct {
+	GitHubActions map[string]string `yaml:"github_actions"`
+	GitLabCI      map[string]string `yaml:"gitlab_ci"`
 }
 
+
 type DockerConfig struct {
-	NodeJS DockerLanguageConfig `yaml:"nodejs"`
-	Go     DockerLanguageConfig `yaml:"go"`
+	NodeJS  DockerLanguageConfig `yaml:"nodejs"`
+	Go      DockerLanguageConfig `yaml:"go"`
+	Generic DockerLanguageConfig `yaml:"generic"`
 }
 
 type DockerLanguageConfig struct {

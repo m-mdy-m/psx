@@ -1,5 +1,10 @@
 package resources
 
+import (
+	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/utils"
+)
+
 func GetReadme(info *ProjectInfo, projectType string) string {
 	if info == nil {
 		info = getDefaultProjectInfo()
@@ -52,6 +57,7 @@ func GetLicense(licenseType, author string) string {
 
 	return replaceVars(license.Content, vars)
 }
+
 func GetAPIDocs(info *ProjectInfo, projectType string) string {
 	if info == nil {
 		info = getDefaultProjectInfo()
@@ -60,6 +66,7 @@ func GetAPIDocs(info *ProjectInfo, projectType string) string {
 	template := getTemplate(templates.APIDocs, projectType)
 	return replaceVars(template, vars)
 }
+
 func GetEditorconfig(projectType string) string {
 	return getTemplate(qualityTools.Editorconfig, projectType)
 }
@@ -77,7 +84,7 @@ func GetDockerfile(info *ProjectInfo, projectType string) string {
 	case "go":
 		template = devops.Docker.Go.Dockerfile
 	default:
-		return ""
+		template = devops.Docker.Generic.Dockerfile
 	}
 
 	return replaceVars(template, vars)
@@ -90,8 +97,31 @@ func GetDockerignore(projectType string) string {
 	case "go":
 		return devops.Docker.Go.Dockerignore
 	default:
-		return ""
+		return devops.Docker.Generic.Dockerignore
 	}
+}
+
+func GetDockerComposeWithPrompt(info *ProjectInfo, projectType string) string {
+	if info == nil {
+		info = getDefaultProjectInfo()
+	}
+	vars := info.ToVars()
+
+	// Ask user if they want database
+	useDB := utils.Prompt("Do you want to include database in docker-compose?")
+
+	var template string
+	if useDB {
+		if t, ok := devops.DockerCompose["with_db"]; ok {
+			template = t
+		}
+	} else {
+		if t, ok := devops.DockerCompose["basic"]; ok {
+			template = t
+		}
+	}
+
+	return replaceVars(template, vars)
 }
 
 func GetSecurity(info *ProjectInfo) string {
@@ -198,10 +228,85 @@ func GetDockerCompose(info *ProjectInfo, projectType string) string {
 	vars := info.ToVars()
 
 	template := ""
-	if t, ok := devops.DockerCompose["with_db"]; ok {
+	if t, ok := devops.DockerCompose["basic"]; ok {
 		template = t
-	} else if t, ok := devops.DockerCompose["basic"]; ok {
-		template = t
+	}
+
+	return replaceVars(template, vars)
+}
+
+// CI/CD functions
+func GetCIConfig(info *ProjectInfo, projectType string) string {
+	if info == nil {
+		info = getDefaultProjectInfo()
+	}
+
+	// Prompt user for platform choice
+	platform, err := utils.PromptChoice(
+		"Which CI/CD platform?",
+		[]string{"GitHub Actions", "GitLab CI", "Skip"},
+	)
+
+	if err != nil || platform == "Skip" {
+		logger.Info("Skipping CI/CD configuration")
+		return ""
+	}
+
+	switch platform {
+	case "GitHub Actions":
+		return GetGitHubActionsWorkflow(info, projectType)
+	case "GitLab CI":
+		return GetGitLabCIConfig(info, projectType)
+	default:
+		return ""
+	}
+}
+
+func GetGitHubActionsWorkflow(info *ProjectInfo, projectType string) string {
+	if info == nil {
+		info = getDefaultProjectInfo()
+	}
+	vars := info.ToVars()
+
+	var template string
+	switch projectType {
+	case "nodejs":
+		if t, ok := devops.CICD.GitHubActions["nodejs"]; ok {
+			template = t
+		}
+	case "go":
+		if t, ok := devops.CICD.GitHubActions["go"]; ok {
+			template = t
+		}
+	default:
+		if t, ok := devops.CICD.GitHubActions["generic"]; ok {
+			template = t
+		}
+	}
+
+	return replaceVars(template, vars)
+}
+
+func GetGitLabCIConfig(info *ProjectInfo, projectType string) string {
+	if info == nil {
+		info = getDefaultProjectInfo()
+	}
+	vars := info.ToVars()
+
+	var template string
+	switch projectType {
+	case "nodejs":
+		if t, ok := devops.CICD.GitLabCI["nodejs"]; ok {
+			template = t
+		}
+	case "go":
+		if t, ok := devops.CICD.GitLabCI["go"]; ok {
+			template = t
+		}
+	default:
+		if t, ok := devops.CICD.GitLabCI["generic"]; ok {
+			template = t
+		}
 	}
 
 	return replaceVars(template, vars)
