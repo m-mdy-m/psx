@@ -1,6 +1,3 @@
-# Language detection and normalization
-# Maps aliases to canonical names
-
 aliases:
   # Node.js
   node: nodejs
@@ -10,19 +7,3 @@ aliases:
   ts: nodejs
   # Go
   golang: go
-
-
-# Folder names for each language
-folders:
-  nodejs:
-    src: [src, lib]
-    tests: [test, tests, __tests__]
-  
-  go:
-    src: [cmd, internal, pkg]
-    tests: []
-
-# Test file patterns
-test_patterns:
-  nodejs: [.test.js, .test.ts, .spec.js, .spec.ts]
-  go: [_test.go]
