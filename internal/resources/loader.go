@@ -1,3 +1,5 @@
+// Add this to internal/resources/loader.go init() function
+
 package resources
 
 import (
@@ -22,6 +24,7 @@ var (
 	docsTemplates *DocsTemplatesConfig
 	messages      *MessagesConfig
 	languages     *LanguagesConfig
+	scripts       *ScriptsConfig // ⭐ ADD THIS
 )
 
 func init() {
@@ -67,10 +70,15 @@ func init() {
 		logger.Fatalf("Failed to load languages: %v", err)
 	}
 
+	// ⭐ ADD THIS
+	scripts, err = utils.LoadEmbedded[ScriptsConfig]("scripts", "embedded/scripts.yml", embeddedFS)
+	if err != nil {
+		logger.Fatalf("Failed to load scripts: %v", err)
+	}
+
 	logger.Verbose("All resources loaded successfully")
 }
 
-// replaceVars replaces {{variable}} placeholders in templates
 func replaceVars(template string, vars map[string]string) string {
 	result := template
 	for key, value := range vars {
@@ -79,8 +87,6 @@ func replaceVars(template string, vars map[string]string) string {
 	}
 	return result
 }
-
-// getCurrentVars returns current date/year variables
 func getCurrentVars() map[string]string {
 	now := time.Now()
 	return map[string]string{
@@ -88,127 +94,16 @@ func getCurrentVars() map[string]string {
 		"date": now.Format("2006-01-02"),
 	}
 }
-
-// normalizeProjectType normalizes project type names
 func NormalizeProjectType(projectType string) string {
 	if projectType == "" {
 		return "generic"
 	}
 
-	// Check aliases
 	if canonical, ok := languages.Aliases[projectType]; ok {
 		return canonical
 	}
 
 	return projectType
-}
-
-// === Template Getters ===
-
-func GetReadme(info *ProjectInfo, projectType string) string {
-	vars := info.ToVars()
-	template := getTemplate(templates.Readme, projectType)
-	return replaceVars(template, vars)
-}
-
-func GetChangelog(info *ProjectInfo) string {
-	vars := info.ToVars()
-	return replaceVars(templates.Changelog, vars)
-}
-
-func GetContributing() string {
-	return templates.Contributing
-}
-
-func GetGitignore(projectType string) string {
-	common := gitignores.Common
-	specific := getTemplate(map[string]string{
-		"nodejs": gitignores.NodeJS,
-		"go":     gitignores.Go,
-	}, projectType)
-
-	if specific != "" {
-		return common + "\n\n" + specific
-	}
-	return common
-}
-
-func GetLicense(licenseType, author string) string {
-	license, ok := (*licenses)[licenseType]
-	if !ok {
-		license = (*licenses)["MIT"]
-	}
-
-	vars := getCurrentVars()
-	vars["fullname"] = author
-	if author == "" {
-		vars["fullname"] = "Your Name"
-	}
-
-	return replaceVars(license.Content, vars)
-}
-
-func GetEditorconfig(projectType string) string {
-	return getTemplate(qualityTools.Editorconfig, projectType)
-}
-
-func GetDockerfile(info *ProjectInfo, projectType string) string {
-	vars := info.ToVars()
-
-	var template string
-	switch projectType {
-	case "nodejs":
-		template = devops.Docker.NodeJS.Dockerfile
-	case "go":
-		template = devops.Docker.Go.Dockerfile
-	default:
-		return ""
-	}
-
-	return replaceVars(template, vars)
-}
-
-func GetDockerignore(projectType string) string {
-	switch projectType {
-	case "nodejs":
-		return devops.Docker.NodeJS.Dockerignore
-	case "go":
-		return devops.Docker.Go.Dockerignore
-	default:
-		return ""
-	}
-}
-
-func GetSecurity(info *ProjectInfo) string {
-	vars := info.ToVars()
-	return replaceVars(docsTemplates.Security, vars)
-}
-
-func GetCodeOfConduct(info *ProjectInfo) string {
-	vars := info.ToVars()
-	return replaceVars(docsTemplates.CodeOfConduct, vars)
-}
-
-func GetMessage(category, key string) string {
-	switch category {
-	case "check":
-		if msg, ok := messages.Check[key]; ok {
-			return msg
-		}
-	case "fix":
-		if msg, ok := messages.Fix[key]; ok {
-			return msg
-		}
-	case "errors":
-		if msg, ok := messages.Errors[key]; ok {
-			return msg
-		}
-	case "help":
-		if msg, ok := messages.Help[key]; ok {
-			return msg
-		}
-	}
-	return ""
 }
 
 func FormatMessage(category, key string, args ...any) string {
@@ -219,19 +114,47 @@ func FormatMessage(category, key string, args ...any) string {
 	return fmt.Sprintf(msg, args...)
 }
 
-// === Helpers ===
-
-// getTemplate gets template for project type, falls back to generic
 func getTemplate(templates map[string]string, projectType string) string {
-	if t, ok := templates[projectType]; ok {
+	if t, ok := templates[projectType]; ok && t != "" {
 		return t
 	}
-	if t, ok := templates["generic"]; ok {
+
+	if t, ok := templates["generic"]; ok && t != "" {
 		return t
 	}
-	// Return first available
+
 	for _, t := range templates {
-		return t
+		if t != "" {
+			return t
+		}
 	}
+
 	return ""
+}
+
+func getScriptTemplate(scripts ScriptPlatformConfig, projectType string) string {
+	if s, ok := scripts["unix"]; ok && s != "" {
+		return s
+	}
+	for _, s := range scripts {
+		if s != "" {
+			return s
+		}
+	}
+
+	return ""
+}
+
+func getDefaultProjectInfo() *ProjectInfo {
+	info := &ProjectInfo{
+		Name:        "project",
+		Description: "A new project",
+		Author:      "Your Name",
+		Email:       "you@example.com",
+		GitHubUser:  "yourusername",
+		RepoName:    "project",
+		License:     "MIT",
+	}
+	info.buildDerived()
+	return info
 }
