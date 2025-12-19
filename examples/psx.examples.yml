@@ -1,0 +1,64 @@
+# Custom files and folders
+version: 1
+
+project:
+  type: "nodejs" 
+
+rules:
+  # General
+  readme: error
+  license: warning
+  gitignore: warning
+  changelog: info
+  package_manager: error
+
+  # Structure
+  src_folder: warning
+  tests_folder: error
+  docs_folder: info
+  scripts_folder: info
+
+  # Documentation
+  adr: info
+  contributing: info
+  api_docs: warning
+  security: info
+  code_of_conduct: info
+  pull_request_template: info
+  issue_templates: info
+
+  # CI/CD
+  ci_config: info
+
+  # Quality
+  pre_commit: info
+  editorconfig: info
+  code_owners: info
+
+  # DevOps
+  dockerfile: info
+  dockerignore: info
+  docker_compose: info
+
+custom:
+  files:
+    - path: ".env.example"
+      content: |
+        # Application
+        NODE_ENV=development
+        PORT=3000
+        
+        # Database
+        DATABASE_URL=postgresql://user:password@localhost:5432/mydb
+        
+        # API Keys
+        API_KEY=your_api_key_here
+        API_SECRET=your_api_secret_here
+  folders:
+    # API structure
+    - path: "src/api"
+      structure:
+        controllers: {}
+        middlewares: {}
+        routes: {}
+        validators: {}
