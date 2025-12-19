@@ -2,9 +2,9 @@
 # Version 1.0.0
 version: 1
 
-# Project detection (auto-detect if empty)
+# Project detection
 project:
-  type: ""  # nodejs, go, rust, python, java - empty = auto-detect
+  type: ""  # nodejs, go, etc...
 
 # Rules configuration
 # Severity: "error" | "warning" | "info" | false (disabled)
@@ -40,7 +40,6 @@ rules:
   # CI/CD Rules
   # ============================================
   ci_config: info
-  github_actions: info
 
   # ============================================
   # Quality Rules

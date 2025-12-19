@@ -320,31 +320,3 @@ rules:
     message: "No scripts folder found"
     fix_hint: "psx fix --rule scripts_folder"
     doc_url: ""
-
-  env_example:
-    id: "ENV_EXAMPLE_RECOMMENDED"
-    category: structure
-    description: "Example environment configuration"
-    severity: info
-    patterns:
-      - .env.example
-      - .env.sample
-      - env.example
-    message: "No .env.example file found"
-    fix_hint: "psx fix --rule env_example"
-    doc_url: ""
-
-  # ============================================
-  # CI/CD (Extended)
-  # ============================================
-
-  github_actions:
-    id: "GITHUB_ACTIONS_RECOMMENDED"
-    category: cicd
-    description: "GitHub Actions workflows"
-    severity: info
-    patterns:
-      - .github/workflows/
-    message: "No GitHub Actions workflows found"
-    fix_hint: "psx fix --rule github_actions"
-    doc_url: "https://docs.github.com/en/actions"

@@ -60,20 +60,20 @@ readme:
     See LICENSE file.
 
   go: |
-    # {{project_name}}
+    # {{RepoName}}
 
     A Go project
 
     ## Installation
 
     ```bash
-    go get github.com/user/{{project_name}}
+    go get github.com/{{github_user}}/{{RepoName}}
     ```
 
     ## Usage
 
     ```go
-    import "github.com/user/{{project_name}}"
+    import "github.com/{{github_user}}/{{RepoName}}"
     ```
 
     ## Development
@@ -146,49 +146,6 @@ contributing: |
   ## Questions?
 
   Open an issue or reach out to maintainers.
-
-adr:
-  first: |
-    # 1. Record architecture decisions
-
-    Date: {{date}}
-
-    ## Status
-
-    Accepted
-
-    ## Context
-
-    We need to record architectural decisions made on this project.
-
-    ## Decision
-
-    We will use Architecture Decision Records, as described by Michael Nygard.
-
-    ## Consequences
-
-    See Michael Nygard's article for details.
-
-  template: |
-    # [number]. [title]
-
-    Date: [YYYY-MM-DD]
-
-    ## Status
-
-    [Proposed | Accepted | Deprecated | Superseded]
-
-    ## Context
-
-    What issue is motivating this decision?
-
-    ## Decision
-
-    What change are we proposing?
-
-    ## Consequences
-
-    What becomes easier or harder because of this?
 
 api_docs:
   nodejs: |
@@ -266,23 +223,3 @@ api_docs:
     ## Usage
 
     Add examples and API descriptions.
-
-test_examples:
-  nodejs: |
-    // Example test
-    describe('Example', () => {
-      it('should pass', () => {
-        expect(true).toBe(true);
-      });
-    });
-
-  go: |
-    package tests
-
-    import "testing"
-
-    func TestExample(t *testing.T) {
-        if true != true {
-            t.Error("Should not fail")
-        }
-    }

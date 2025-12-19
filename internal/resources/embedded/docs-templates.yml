@@ -16,7 +16,7 @@ security: |
 
   ## Reporting a Vulnerability
 
-  Please report security vulnerabilities to: {{security_email}}
+  Please report security vulnerabilities to: {{email}}
 
   **Please do not report security vulnerabilities through public GitHub issues.**
 
@@ -89,7 +89,7 @@ code_of_conduct: |
   ## Enforcement
 
   Instances of abusive, harassing, or otherwise unacceptable behavior may be
-  reported to the community leaders responsible for enforcement at {{conduct_email}}.
+  reported to the community leaders responsible for enforcement at {{email}}.
 
   All complaints will be reviewed and investigated promptly and fairly.
 
@@ -337,44 +337,65 @@ codeowners: |
   /*.json             @{{github_username}}
 
 # Architecture Decision Records Template
-adr_template: |
-  # {{number}}. {{title}}
+adr: 
+  first: |
+      # 1. Record architecture decisions
 
-  Date: {{date}}
+      Date: {{date}}
 
-  ## Status
+      ## Status
 
-  {{status}}
-  <!-- Options: Proposed, Accepted, Deprecated, Superseded -->
+      Accepted
 
-  ## Context
+      ## Context
 
-  <!-- What is the issue that we're seeing that is motivating this decision or change? -->
+      We need to record architectural decisions made on this project.
 
-  ## Decision
+      ## Decision
 
-  <!-- What is the change that we're proposing and/or doing? -->
+      We will use Architecture Decision Records, as described by Michael Nygard.
 
-  ## Consequences
+      ## Consequences
 
-  <!-- What becomes easier or more difficult to do because of this change? -->
+      See Michael Nygard's article for details.
+  template: |
+      # {{number}}. {{title}}
 
-  ### Positive
+      Date: {{date}}
 
-  - 
+      ## Status
 
-  ### Negative
+      {{status}}
+      <!-- Options: Proposed, Accepted, Deprecated, Superseded -->
 
-  - 
+      ## Context
 
-  ### Neutral
+      <!-- What is the issue that we're seeing that is motivating this decision or change? -->
 
-  - 
+      ## Decision
 
-  ## Alternatives Considered
+      <!-- What is the change that we're proposing and/or doing? -->
 
-  <!-- What other options were considered and why were they rejected? -->
+      ## Consequences
 
-  ## References
+      <!-- What becomes easier or more difficult to do because of this change? -->
 
-  <!-- Links to related documents, discussions, or resources -->
+      ### Positive
+
+      - 
+
+      ### Negative
+
+      - 
+
+      ### Neutral
+
+      - 
+
+      ## Alternatives Considered
+
+      <!-- What other options were considered and why were they rejected? -->
+
+      ## References
+
+      <!-- Links to related documents, discussions, or resources -->
