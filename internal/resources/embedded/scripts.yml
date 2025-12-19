@@ -149,43 +149,6 @@ build:
 
     echo "✓ Build complete: {{build_dir}}/"
 
-# Deploy script
-deploy:
-  unix: |
-    #!/usr/bin/env bash
-    # Deploy script
-
-    set -e
-
-    # Colors
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    NC='\033[0m'
-
-    ENVIRONMENT=${1:-production}
-
-    echo -e "${GREEN}Deploying to ${ENVIRONMENT}...${NC}"
-
-    # Check if environment exists
-    if [ ! -f "config/${ENVIRONMENT}.yml" ]; then
-        echo -e "${RED}Error: Environment config not found${NC}"
-        exit 1
-    fi
-
-    # Build
-    echo "Building..."
-    {{build_command}}
-
-    # Run tests
-    echo "Running tests..."
-    {{test_command}}
-
-    # Deploy
-    echo "Deploying..."
-    {{deploy_command}}
-
-    echo -e "${GREEN}✓ Deployment complete!${NC}"
 
 # Release script
 release:
@@ -275,48 +238,3 @@ clean:
     rm -rf {{cache_dirs}}
 
     echo "✓ Clean complete!"
-
-# Lint script
-lint:
-  unix: |
-    #!/usr/bin/env bash
-    # Run linters
-
-    set -e
-
-    echo "Running linters..."
-
-    # Run linter
-    {{lint_command}}
-
-    echo "✓ Lint passed!"
-
-# Format script
-format:
-  unix: |
-    #!/usr/bin/env bash
-    # Format code
-
-    echo "Formatting code..."
-
-    # Run formatter
-    {{format_command}}
-
-    echo "✓ Format complete!"
-
-# Dev server script
-dev:
-  unix: |
-    #!/usr/bin/env bash
-    # Start development server
-
-    echo "Starting development server..."
-
-    # Check dependencies
-    if [ ! -d "{{deps_dir}}" ]; then
-        echo "Installing dependencies..."
-        {{install_command}}
-    fi
-
-    # Start server
-    {{dev_command}}
