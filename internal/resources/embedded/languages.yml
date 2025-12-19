@@ -1,9 +1,64 @@
+# Language definitions and metadata
+
 aliases:
   # Node.js
   node: nodejs
+  nodejs: nodejs
   javascript: nodejs
   js: nodejs
   typescript: nodejs
   ts: nodejs
+  
   # Go
   golang: go
+
+# Language-specific metadata
+languages:
+  nodejs:
+    name: "Node.js"
+    package_managers:
+      - name: "npm"
+        file: "package.json"
+        lock: "package-lock.json"
+        install_cmd: "npm install"
+        priority: 1
+      - name: "yarn"
+        file: "package.json"
+        lock: "yarn.lock"
+        install_cmd: "yarn install"
+        priority: 2
+      - name: "pnpm"
+        file: "package.json"
+        lock: "pnpm-lock.yaml"
+        install_cmd: "pnpm install"
+        priority: 3
+    
+    test_patterns:
+      - "test/"
+      - "tests/"
+      - "__tests__/"
+      - "**/*.test.js"
+      - "**/*.test.ts"
+      - "**/*.spec.js"
+      - "**/*.spec.ts"
+    
+    src_patterns:
+      - "src/"
+      - "lib/"
+    
+  go:
+    name: "Go"
+    package_managers:
+      - name: "go modules"
+        file: "go.mod"
+        lock: "go.sum"
+        install_cmd: "go mod download"
+        priority: 1
+    
+    test_patterns:
+      - "**/*_test.go"
+    
+    src_patterns:
+      - "cmd/"
+      - "internal/"
+      - "pkg/"
