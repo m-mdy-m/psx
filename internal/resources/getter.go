@@ -1,7 +1,5 @@
 package resources
 
-// === Template Getters ===
-
 func GetReadme(info *ProjectInfo, projectType string) string {
 	if info == nil {
 		info = getDefaultProjectInfo()
@@ -54,7 +52,14 @@ func GetLicense(licenseType, author string) string {
 
 	return replaceVars(license.Content, vars)
 }
-
+func GetAPIDocs(info *ProjectInfo, projectType string) string {
+	if info == nil {
+		info = getDefaultProjectInfo()
+	}
+	vars := info.ToVars()
+	template := getTemplate(templates.APIDocs, projectType)
+	return replaceVars(template, vars)
+}
 func GetEditorconfig(projectType string) string {
 	return getTemplate(qualityTools.Editorconfig, projectType)
 }
@@ -168,7 +173,7 @@ func GetADRFirst(info *ProjectInfo) string {
 		info = getDefaultProjectInfo()
 	}
 	vars := info.ToVars()
-	if t, ok := templates.ADR["first"]; ok {
+	if t, ok := docsTemplates.ADRTemplates["first"]; ok {
 		return replaceVars(t, vars)
 	}
 	return ""
@@ -179,7 +184,7 @@ func GetADRTemplate(info *ProjectInfo) string {
 		info = getDefaultProjectInfo()
 	}
 	vars := info.ToVars()
-	return replaceVars(docsTemplates.ADRTemplate, vars)
+	return replaceVars(docsTemplates.ADRTemplates["template"], vars)
 }
 
 func GetPreCommit(projectType string) string {
@@ -200,25 +205,6 @@ func GetDockerCompose(info *ProjectInfo, projectType string) string {
 	}
 
 	return replaceVars(template, vars)
-}
-
-func GetGitHubAction(projectType string) string {
-	switch projectType {
-	case "nodejs":
-		if t, ok := devops.GitHubActions["nodejs_ci"]; ok {
-			return t
-		}
-	case "go":
-		if t, ok := devops.GitHubActions["go_ci"]; ok {
-			return t
-		}
-	}
-
-	if t, ok := devops.GitHubActions["nodejs_ci"]; ok {
-		return t
-	}
-
-	return ""
 }
 
 func GetScripts(info *ProjectInfo, projectType string) map[string]string {

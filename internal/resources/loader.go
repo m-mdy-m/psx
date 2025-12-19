@@ -24,7 +24,7 @@ var (
 	docsTemplates *DocsTemplatesConfig
 	messages      *MessagesConfig
 	languages     *LanguagesConfig
-	scripts       *ScriptsConfig // ⭐ ADD THIS
+	scripts       *ScriptsConfig
 )
 
 func init() {
@@ -70,7 +70,6 @@ func init() {
 		logger.Fatalf("Failed to load languages: %v", err)
 	}
 
-	// ⭐ ADD THIS
 	scripts, err = utils.LoadEmbedded[ScriptsConfig]("scripts", "embedded/scripts.yml", embeddedFS)
 	if err != nil {
 		logger.Fatalf("Failed to load scripts: %v", err)

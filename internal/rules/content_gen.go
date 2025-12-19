@@ -42,10 +42,11 @@ func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 		return resources.GetGitignore(cg.projectType)
 	case "changelog":
 		return resources.GetChangelog(cg.projectInfo)
-
-	// Documentation (from docs-templates.yml)
 	case "contributing":
 		return resources.GetContributing()
+	case "api_docs":
+		return resources.GetAPIDocs(cg.projectInfo, cg.projectType)
+	// Documentation (from docs-templates.yml)
 	case "security":
 		return resources.GetSecurity(cg.projectInfo)
 	case "code_of_conduct":
@@ -68,13 +69,6 @@ func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
 		return resources.GetDockerignore(cg.projectType)
 	case "docker_compose":
 		return resources.GetDockerCompose(cg.projectInfo, cg.projectType)
-
-	// CI/CD (from devops.yml)
-	case "github_actions":
-		return resources.GetGitHubAction(cg.projectType)
-	case "ci_config":
-		return resources.GetGitHubAction(cg.projectType)
-
 	default:
 		return ""
 	}
@@ -119,7 +113,6 @@ func (cg *ContentGenerator) GenerateMultiple(ruleID string) (map[string]string, 
 
 	switch ruleID {
 	case "issue_templates":
-		// All issue templates from docs-templates.yml
 		result[".github/ISSUE_TEMPLATE/bug_report.yml"] = resources.GetIssueBugReport()
 		result[".github/ISSUE_TEMPLATE/feature_request.yml"] = resources.GetIssueFeatureRequest()
 		result[".github/ISSUE_TEMPLATE/question.yml"] = resources.GetIssueQuestion()
@@ -127,13 +120,11 @@ func (cg *ContentGenerator) GenerateMultiple(ruleID string) (map[string]string, 
 		return result, nil
 
 	case "adr":
-		// ADR templates from templates.yml and docs-templates.yml
 		result["docs/adr/0001-record-architecture-decisions.md"] = resources.GetADRFirst(cg.projectInfo)
 		result["docs/adr/template.md"] = resources.GetADRTemplate(cg.projectInfo)
 		return result, nil
 
 	case "scripts_folder":
-		// All scripts from scripts.yml
 		scripts := resources.GetScripts(cg.projectInfo, cg.projectType)
 		for name, content := range scripts {
 			result[fmt.Sprintf("scripts/%s", name)] = content

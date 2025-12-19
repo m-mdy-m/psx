@@ -14,9 +14,7 @@ import (
 
 const projectCacheFile = ".psx-project.yml"
 
-// GetProjectInfo loads or creates project info
 func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
-	// Try to load from cache
 	if info, err := loadProjectInfo(projectPath); err == nil && info != nil {
 		logger.Verbose("Using cached project info")
 		return info
@@ -28,11 +26,7 @@ func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 		Name:    filepath.Base(projectPath),
 		License: "MIT",
 	}
-
-	// Try to get info from git
 	info.loadFromGit()
-
-	// Ask user if interactive
 	if interactive {
 		info.promptUser()
 	} else {
@@ -40,8 +34,6 @@ func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 	}
 
 	info.buildDerived()
-
-	// Save to cache
 	if err := saveProjectInfo(projectPath, info); err != nil {
 		logger.Warning(fmt.Sprintf("Failed to save project info: %v", err))
 	}
@@ -49,7 +41,6 @@ func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
 	return info
 }
 
-// loadProjectInfo loads project info from cache
 func loadProjectInfo(projectPath string) (*ProjectInfo, error) {
 	cachePath := filepath.Join(projectPath, projectCacheFile)
 
@@ -67,7 +58,6 @@ func loadProjectInfo(projectPath string) (*ProjectInfo, error) {
 	return &info, nil
 }
 
-// saveProjectInfo saves project info to cache
 func saveProjectInfo(projectPath string, info *ProjectInfo) error {
 	cachePath := filepath.Join(projectPath, projectCacheFile)
 
@@ -79,7 +69,6 @@ func saveProjectInfo(projectPath string, info *ProjectInfo) error {
 	return os.WriteFile(cachePath, data, 0644)
 }
 
-// loadFromGit tries to load info from git config
 func (p *ProjectInfo) loadFromGit() {
 	if name := runCommand("git", "config", "user.name"); name != "" {
 		p.Author = strings.TrimSpace(name)
@@ -95,7 +84,6 @@ func (p *ProjectInfo) loadFromGit() {
 	}
 }
 
-// promptUser asks user for missing information
 func (p *ProjectInfo) promptUser() {
 	fmt.Println("Project Information:")
 	fmt.Println()
@@ -135,13 +123,6 @@ func (p *ProjectInfo) buildDerived() {
 		p.Domain = "example.com"
 		p.DockerImage = strings.ToLower(p.Name)
 	}
-
-	p.SupportEmail = p.Email
-	p.SecurityEmail = p.Email
-	if p.Email == "" {
-		p.SupportEmail = "support@example.com"
-		p.SecurityEmail = "security@example.com"
-	}
 }
 
 func (p *ProjectInfo) ToVars() map[string]string {
@@ -166,9 +147,6 @@ func (p *ProjectInfo) ToVars() map[string]string {
 	vars["license"] = p.License
 	vars["domain"] = p.Domain
 	vars["docker_image"] = p.DockerImage
-	vars["support_email"] = p.SupportEmail
-	vars["security_email"] = p.SecurityEmail
-	vars["conduct_email"] = p.SupportEmail
 
 	return vars
 }

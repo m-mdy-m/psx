@@ -10,11 +10,9 @@ type ProjectInfo struct {
 	License     string `yaml:"license"`
 
 	// Derived fields (not in YAML)
-	RepoURL       string `yaml:"-"`
-	Domain        string `yaml:"-"`
-	DockerImage   string `yaml:"-"`
-	SupportEmail  string `yaml:"-"`
-	SecurityEmail string `yaml:"-"`
+	RepoURL     string `yaml:"-"`
+	Domain      string `yaml:"-"`
+	DockerImage string `yaml:"-"`
 }
 
 type MessagesConfig struct {
@@ -44,9 +42,7 @@ type TemplatesConfig struct {
 	Readme       map[string]string `yaml:"readme"`
 	Changelog    string            `yaml:"changelog"`
 	Contributing string            `yaml:"contributing"`
-	ADR          map[string]string `yaml:"adr"`
 	APIDocs      map[string]string `yaml:"api_docs"`
-	TestExamples map[string]string `yaml:"test_examples"`
 }
 
 type QualityToolsConfig struct {
@@ -57,7 +53,6 @@ type QualityToolsConfig struct {
 type DevOpsConfig struct {
 	Docker        DockerConfig      `yaml:"docker"`
 	DockerCompose map[string]string `yaml:"docker_compose"`
-	GitHubActions map[string]string `yaml:"github_actions"`
 }
 
 type DockerConfig struct {
@@ -81,15 +76,15 @@ type RenovateConfig struct {
 }
 
 type DocsTemplatesConfig struct {
-	Security             string `yaml:"security"`
-	CodeOfConduct        string `yaml:"code_of_conduct"`
-	PullRequestTemplate  string `yaml:"pull_request_template"`
-	IssueBugReport       string `yaml:"issue_bug_report"`
-	IssueFeatureRequest  string `yaml:"issue_feature_request"`
-	IssueQuestion        string `yaml:"issue_question"`
-	IssueTemplatesConfig string `yaml:"issue_templates_config"`
-	Codeowners           string `yaml:"codeowners"`
-	ADRTemplate          string `yaml:"adr_template"`
+	Security             string            `yaml:"security"`
+	CodeOfConduct        string            `yaml:"code_of_conduct"`
+	PullRequestTemplate  string            `yaml:"pull_request_template"`
+	IssueBugReport       string            `yaml:"issue_bug_report"`
+	IssueFeatureRequest  string            `yaml:"issue_feature_request"`
+	IssueQuestion        string            `yaml:"issue_question"`
+	IssueTemplatesConfig string            `yaml:"issue_templates_config"`
+	Codeowners           string            `yaml:"codeowners"`
+	ADRTemplates         map[string]string `yaml:"adr"`
 }
 
 type ScriptsConfig struct {
@@ -109,12 +104,5 @@ type ScriptsConfig struct {
 type ScriptPlatformConfig map[string]string
 
 type LanguagesConfig struct {
-	Aliases      map[string]string          `yaml:"aliases"`
-	Folders      map[string]LanguageFolders `yaml:"folders"`
-	TestPatterns map[string][]string        `yaml:"test_patterns"`
-}
-
-type LanguageFolders struct {
-	Src   []string `yaml:"src"`
-	Tests []string `yaml:"tests"`
+	Aliases map[string]string `yaml:"aliases"`
 }
