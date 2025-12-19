@@ -44,7 +44,6 @@ func FixAll(cfg *config.Config, fixCtx *FixContext, failedRules []string) ([]*Fi
 			logger.Warning(fmt.Sprintf("Rule not found: %s", ruleID))
 			continue
 		}
-
 		result, err := fixer.fix(ruleID, activeRule, fixCtx)
 		if err != nil {
 			logger.Warning(fmt.Sprintf("Fix failed for %s: %v", ruleID, err))
@@ -54,19 +53,27 @@ func FixAll(cfg *config.Config, fixCtx *FixContext, failedRules []string) ([]*Fi
 		results = append(results, result)
 	}
 
+	if cfg.Custom != nil {
+		handler := NewCustomHandler(fixCtx.Context, cfg.Custom)
+		customResults, err := handler.ApplyCustomFiles(fixCtx)
+		if err != nil {
+			return results, err
+		}
+		results = append(results, customResults...)
+	}
 	return results, nil
 }
 
 func (f *Fixer) fix(ruleID string, rule *config.ActiveRule, fixCtx *FixContext) (*FixResult, error) {
 	logger.Verbose(fmt.Sprintf("Fixing: %s", ruleID))
 
-	// Check if this rule creates multiple files
-	multiFiles, err := f.generator.GenerateMultiple(ruleID)
-	if err == nil && len(multiFiles) > 0 {
-		return f.fixMultipleFiles(ruleID, multiFiles, fixCtx)
+	if f.resolver.IsSpecialMultiFileRule(ruleID) || f.needsMultiFileGeneration(ruleID) {
+		multiFiles, err := f.generator.GenerateMultiple(ruleID)
+		if err == nil && len(multiFiles) > 0 {
+			return f.fixMultipleFiles(ruleID, multiFiles, fixCtx)
+		}
 	}
 
-	// Single file/folder fix
 	patterns := config.GetPatterns(rule.Metadata.Patterns, f.ctx.ProjectType)
 	if len(patterns) == 0 {
 		return &FixResult{
@@ -79,23 +86,37 @@ func (f *Fixer) fix(ruleID string, rule *config.ActiveRule, fixCtx *FixContext) 
 	return f.fixSinglePattern(ruleID, primaryPattern, fixCtx)
 }
 
+func (f *Fixer) needsMultiFileGeneration(ruleID string) bool {
+	multiFileRules := []string{
+		"api_docs",
+		"src_folder",
+		"tests_folder",
+		"ci_config",
+		"issue_templates",
+		"adr",
+		"scripts_folder",
+	}
+
+	for _, rule := range multiFileRules {
+		if ruleID == rule {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (f *Fixer) fixSinglePattern(ruleID, pattern string, fixCtx *FixContext) (*FixResult, error) {
 	fullPath := filepath.Join(f.ctx.ProjectPath, pattern)
 
-	// Check if already exists and has content
 	if f.shouldSkipPattern(fullPath) {
 		return &FixResult{RuleID: ruleID, Skipped: true}, nil
 	}
 
-	// Determine if this is a folder or file
 	isFolder := f.isFolder(pattern)
 
-	// Ask user if interactive (and not dry-run)
 	if fixCtx.Interactive && !fixCtx.DryRun {
 		resourceType := "file"
-		if isFolder {
-			resourceType = "folder"
-		}
 		prompt := fmt.Sprintf("Create %s %s?", resourceType, pattern)
 		if !utils.Prompt(prompt) {
 			return &FixResult{RuleID: ruleID, Skipped: true}, nil
@@ -106,10 +127,8 @@ func (f *Fixer) fixSinglePattern(ruleID, pattern string, fixCtx *FixContext) (*F
 	var err error
 
 	if fixCtx.DryRun {
-		// Dry run - just preview
 		changes = f.previewChanges(ruleID, pattern, fullPath, isFolder)
 	} else {
-		// Actually create the file/folder
 		changes, err = f.applyChanges(ruleID, pattern, fullPath, isFolder)
 		if err != nil {
 			return &FixResult{
@@ -130,7 +149,6 @@ func (f *Fixer) fixMultipleFiles(ruleID string, files map[string]string, fixCtx 
 	var changes []Change
 	var errors []string
 
-	// Ask user once if interactive
 	if fixCtx.Interactive && !fixCtx.DryRun {
 		prompt := fmt.Sprintf("Create %d files for %s?", len(files), ruleID)
 		if !utils.Prompt(prompt) {
@@ -141,13 +159,11 @@ func (f *Fixer) fixMultipleFiles(ruleID string, files map[string]string, fixCtx 
 	for relPath, content := range files {
 		fullPath := filepath.Join(f.ctx.ProjectPath, relPath)
 
-		// Skip if exists with content
 		if f.shouldSkipPattern(fullPath) {
 			continue
 		}
 
 		if fixCtx.DryRun {
-			// Preview
 			changes = append(changes, Change{
 				Type:        ChangeCreateFile,
 				Path:        fullPath,
@@ -155,7 +171,6 @@ func (f *Fixer) fixMultipleFiles(ruleID string, files map[string]string, fixCtx 
 				Content:     formatContent(content, 10),
 			})
 		} else {
-			// Actually create
 			err := utils.CreateFile(fullPath, content)
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("%s: %v", relPath, err))
