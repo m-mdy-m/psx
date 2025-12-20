@@ -4,7 +4,6 @@
 
 ## Features
 
-- **Automatic Detection** - Identifies project type (Node.js, Go, etc.)
 - **Auto-Fix** - Automatically creates missing files and folders
 - **Multi-Language Support** - Supports Node.js, Go, and generic projects
 - **Configurable** - Customize rules and severity levels via YAML
