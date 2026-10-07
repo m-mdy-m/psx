@@ -79,6 +79,8 @@ Each test name below is a regression test named after the behaviour it protects.
 | --- | --- |
 | `TestEveryFixTemplateExists` | A rule advertising a fix that has no template |
 | `TestFixIsIdempotent` | `fix` rewriting or duplicating files on a second run |
+| `TestCustomFolderLeafIsAFileNotADirectory` | `custom.folders` creating a directory named like a config file |
+| `TestCustomFolderCreationOrderIsStable` | Creation order varying with Go's map iteration |
 
 ### Configuration is not silently ignored
 

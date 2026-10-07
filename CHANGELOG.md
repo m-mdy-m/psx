@@ -78,6 +78,12 @@ Correctness bugs that produced wrong results rather than errors:
   now share one severity counter, and the parts always add up to the total.
 - **`psx fix` printed absolute paths.** Created files were listed by full path, which is
   noisy and unreadable. Paths are now relative to the project root.
+- **`custom.folders` created every entry as a directory.** `production.yaml: {}` — an empty
+  file — produced a directory with that name, so the documented structure was unusable. A
+  key with children is a directory; a key with none is a file, and a string leaf has its
+  content written.
+- **`psx fix` counted directories as files.** The closing line read `Created 9 file(s)`
+  when four of the nine were directories.
 
 ### Added
 

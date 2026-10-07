@@ -117,7 +117,7 @@ func runFixCommand(cmd *cobra.Command, args []string, opts *flags.Options) error
 		return commandError(exitCode, "%d rule(s) could not be fixed", summary.Failed)
 	}
 	if summary.Fixed > 0 {
-		logger.Successf("Created %d file(s)", summary.Changes)
+		logger.Successf("Created %s", summary.describe())
 		logger.Info("Run `psx check` to verify")
 	}
 	return nil
@@ -192,7 +192,30 @@ type fixSummary struct {
 	Fixed   int
 	Skipped int
 	Failed  int
-	Changes int
+	Files   int
+	Dirs    int
+}
+
+// describe counts files and directories separately, because a folder tree mixes them
+// and "9 file(s)" is wrong whenever any of them are directories.
+func (s fixSummary) describe() string {
+	if s.Dirs == 0 {
+		return plural(s.Files, "file", "files")
+	}
+	if s.Files == 0 {
+		return plural(s.Dirs, "directory", "directories")
+	}
+	return plural(s.Files, "file", "files") + " and " + plural(s.Dirs, "directory", "directories")
+}
+
+func plural(n int, word, pluralWord string) string {
+	if pluralWord == "" {
+		pluralWord = word + "s"
+	}
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, word)
+	}
+	return fmt.Sprintf("%d %s", n, pluralWord)
 }
 
 func summarizeFix(results []*rules.FixResult) fixSummary {
@@ -203,7 +226,13 @@ func summarizeFix(results []*rules.FixResult) fixSummary {
 			s.Failed++
 		case r.Fixed:
 			s.Fixed++
-			s.Changes += len(r.Changes)
+			for _, c := range r.Changes {
+				if c.Type == rules.ChangeCreateFolder {
+					s.Dirs++
+				} else {
+					s.Files++
+				}
+			}
 		case r.Skipped:
 			s.Skipped++
 		}

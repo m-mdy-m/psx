@@ -97,16 +97,21 @@ func (h CustomHandler) applyFolders(folders []CustomFolderSpec, fixCtx *FixConte
 		paths := flattenStructure(f.Path, f.Structure)
 		res.Changes = make([]Change, 0, len(paths))
 
-		for _, rel := range paths {
-			child, err := h.resolve(rel)
+		for _, p := range paths {
+			child, err := h.resolve(p.Path)
 			if err != nil {
 				res.Error = err
 				break
 			}
+			kind := ChangeCreateFile
+			if p.IsDir {
+				kind = ChangeCreateFolder
+			}
 			res.Changes = append(res.Changes, Change{
-				Type:        ChangeCreateFolder,
+				Type:        kind,
 				Path:        child,
-				Description: "created " + rel,
+				Description: "created " + p.Path,
+				Content:     Preview(p.Content, 10),
 			})
 		}
 
@@ -116,9 +121,17 @@ func (h CustomHandler) applyFolders(folders []CustomFolderSpec, fixCtx *FixConte
 		}
 
 		if fixCtx == nil || !fixCtx.DryRun {
-			for _, rel := range paths {
-				if err := os.MkdirAll(mustResolve(h.root, rel), 0o755); err != nil {
-					res.Error = err
+			for _, p := range paths {
+				full := mustResolve(h.root, p.Path)
+				if p.IsDir {
+					if err := os.MkdirAll(full, 0o755); err != nil {
+						res.Error = err
+						break
+					}
+					continue
+				}
+				if err := writeFile(full, p.Content, 0o644); err != nil {
+					res.Error = fmt.Errorf("write %s: %w", p.Path, err)
 					break
 				}
 			}
@@ -184,10 +197,22 @@ func mustResolve(root, rel string) string {
 	return filepath.Join(root, filepath.FromSlash(rel))
 }
 
+// structPath is one entry of a custom folder tree.
+type structPath struct {
+	Path    string
+	IsDir   bool
+	Content string
+}
+
 // flattenStructure expands a nested structure map into a sorted path list, so
 // creation order is deterministic across runs.
-func flattenStructure(base string, structure map[string]any) []string {
-	var out []string
+//
+// A key with children is a directory. A key with none is a file, so
+// `production.yaml: {}` creates an empty file rather than a directory that
+// happens to be named like a config file.
+func flattenStructure(base string, structure map[string]any) []structPath {
+	var out []structPath
+
 	var walk func(prefix string, node map[string]any)
 	walk = func(prefix string, node map[string]any) {
 		keys := make([]string, 0, len(node))
@@ -201,14 +226,25 @@ func flattenStructure(base string, structure map[string]any) []string {
 			if prefix != "" {
 				path = prefix + "/" + k
 			}
-			out = append(out, path)
-			if child, ok := node[k].(map[string]any); ok {
+
+			child, isMap := node[k].(map[string]any)
+			if isMap && len(child) > 0 {
+				out = append(out, structPath{Path: path, IsDir: true})
 				walk(path, child)
+				continue
 			}
+			out = append(out, structPath{Path: path, Content: leafContent(node[k])})
 		}
 	}
 	walk(base, structure)
 	return out
+}
+
+// leafContent reads the text of a childless entry; anything that is not a string
+// is an empty file.
+func leafContent(v any) string {
+	s, _ := v.(string)
+	return s
 }
 
 func statPath(path string) (bool, os.FileInfo) {
