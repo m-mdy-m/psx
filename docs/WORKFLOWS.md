@@ -1,17 +1,78 @@
 # GitHub Actions templates
 
-psx bundles 21 workflow templates, grouped so a project adopts only what it needs. Each one
-is a standalone file: copy it, or let `psx fix` write it, and it works without depending on
-any other workflow existing.
+CI configuration is the most tedious part of setting up a repository, and it is also the
+part you are most likely to get wrong in a way nobody notices for months. psx bundles 21
+ready-made workflows so you can start from a working one instead of a blank file.
+
+**You do not need any of them.** psx checks that a workflow *exists*; it does not judge
+whether yours is correct. Adopt these only if you want them.
+
+---
+
+## Start here
+
+Most projects need one workflow, not twenty-one. This writes the CI for your language:
 
 ```bash
-psx workflows                        # the catalogue
-psx workflows --group docker         # one group
-psx workflows --show                 # print the templates
+psx fix --rule workflow_ci
+```
+
+It picks `ci_go`, `ci_nodejs`, `ci_rust` or `ci_python` based on your project, so a Go
+project gets `gofmt`, `go vet` and `go test -race`; a Node project gets pnpm, lint, typecheck
+and test.
+
+Then look at what it produced before you push it:
+
+```bash
+psx workflows --show
+```
+
+A generated workflow runs with your repository's permissions. Read it first — especially
+anything that publishes.
+
+---
+
+## When you want them
+
+```bash
+psx fix --rule workflow_codeql       # CodeQL scanning
+psx fix --rule workflow_secret_scan  # catch committed secrets
+psx fix --rule workflow_docker       # build and publish images
+psx fix --rule workflow_release      # publish from a version tag
+```
+
+Those are the four rules that produce a workflow. Each writes its own file, so you adopt
+them one at a time rather than all at once.
+
+Some templates are not reachable from a rule — the `deploy_*` group, for instance. Print one
+and copy it into place by hand:
+
+```bash
+psx workflows --group deploy --show
+```
+
+---
+
+## Looking around
+
+```bash
+psx workflows                        # every template, grouped
+psx workflows --group docker         # just one group
+psx workflows --show                 # print the full YAML
 psx workflows --json                 # for scripting
 ```
 
-## Groups
+`--show` prints a table **and** the YAML bodies, so redirecting it captures the table too.
+Copy from the `───── name ─────` section rather than saving the whole output.
+
+```bash
+psx workflows --group deploy --show    # read it
+psx workflows --json > templates.json  # or work with it programmatically
+```
+
+---
+
+## The catalogue
 
 ### `ci` — validate every push and pull request
 
@@ -114,11 +175,16 @@ adopt:
 | Secret | Used by |
 | --- | --- |
 | `DOCKER_USERNAME`, `DOCKER_TOKEN` | `docker_hub` |
+| `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `REGISTRY_URL` | `deploy_container`, to pull a private image |
 | `NPM_TOKEN` | `release_nodejs` |
 | `DEPLOY_HOST`, `DEPLOY_SSH_KEY` | `deploy_container` |
 
 `docker_ghcr`, `codeql`, `security_secret_scan` and `release_aggregate` use the automatic
-`GITHUB_TOKEN` and need nothing.
+`GITHUB_TOKEN` and need nothing configured.
+
+A workflow referencing a secret you have not set fails at the point of use, not at parse
+time. Adopt the CI and security workflows first — they need nothing — and add publishing
+workflows once the credentials exist.
 
 ## Reviewing before you commit
 
@@ -126,7 +192,7 @@ A generated workflow runs with your repository's permissions. Read it before pus
 particularly anything that publishes:
 
 ```bash
-psx workflows --group docker --show > review.yml
+psx workflows --group docker --show
 ```
 
 The bundled workflows pin actions to major versions and grant the minimum `permissions`

@@ -279,6 +279,22 @@ problems you have not already recorded.
 
 ---
 
+## When psx pushes back
+
+Setting `readme: false` or `license: false` prints a warning:
+
+```
+⚠ Critical rule 'readme' is disabled - this is not recommended
+```
+
+It is only a warning — your configuration wins, and the rules stay off. But those two
+cover the two things a stranger looks for first when they open a repository, so it is
+worth knowing you switched them off deliberately.
+
+This applies to `false` only. Lowering `readme` to `info` is fine.
+
+---
+
 ## Exit codes
 
 | Code | Meaning |

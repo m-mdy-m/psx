@@ -128,7 +128,8 @@ Being honest about the gaps:
 
 - **Not every package has tests.** `flags`, `logger`, `ui`, `utils` and `detect` are
   exercised indirectly but have no dedicated test files. Most are thin wrappers, but that
-  is an assumption, not a guarantee.
+  is an assumption, not a guarantee. `internal/command` only got tests in this release; the
+  `--baseline` defects survived precisely because nothing covered it.
 - **`watch` is untested at the unit level.** The file-watching loop is only covered by
   running the binary. Debounce and interval behaviour are the most likely place for a
   regression to hide.

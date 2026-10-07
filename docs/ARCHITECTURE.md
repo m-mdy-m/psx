@@ -1,7 +1,29 @@
 # Architecture
 
+**This page is for people changing psx.** If you are using it, read
+[Getting started](GETTING-STARTED.md) instead.
+
 psx is a single static binary with all rules and templates embedded. There is no config
 schema to fetch, no plugin registry, and no network access at runtime.
+
+---
+
+## How a check flows through the code
+
+`psx check ./my-project` travels through six packages, in this order:
+
+```
+command     parse flags, decide what this run may do
+  cmdctx    load config, detect the project type, scan the tree
+    tree    one WalkDir, building an immutable index
+    rules   evaluate every rule against that index
+  report     render the result in the requested format
+```
+
+Each step hands the next one a plain value. `cmdctx.ProjectContext` carries the config, the
+resolved project path and the tree snapshot; nothing reaches back.
+
+---
 
 ## The load-bearing decisions
 
@@ -113,10 +135,17 @@ template. `resources.IsHumanPlaceholder` marks them so they are not treated as b
 | Package | Covers |
 | --- | --- |
 | `tree` | Glob semantics, ignore rules, negation, snapshot behaviour |
-| `rules` | Engine verdicts, ignore handling, idempotence, generated content |
+| `rules` | Engine verdicts, ignore handling, idempotence, generated content, custom trees |
 | `resources` | Template rendering, placeholder safety, workflow validity |
-| `report` | Every output format, JSON purity, CI formats |
-| `config` | Generated rule reference |
+| `report` | Every output format, JSON purity, CI formats, summary consistency |
+| `command` | Baselines, exit-code thresholds, fix summaries |
+| `config` | Generated rule reference, and that every doc link resolves |
+| `cmdctx` | Config discovery, detection, path resolution |
+
+Three packages have **no tests yet**: `flags`, `logger`, `ui`, `utils` and `detect` are
+exercised only through the packages above. `watch` has no unit tests either, so its
+debounce and interval behaviour is the least protected code in the project. See
+[Verification](VERIFICATION.md) for the full accounting.
 
 The suites worth knowing about, because they each caught a class of bug:
 
@@ -127,6 +156,8 @@ The suites worth knowing about, because they each caught a class of bug:
 - `TestGeneratedContentHasNoRawPlaceholders` — end-to-end, through the real fixer.
 - `TestFixIsIdempotent` — `fix` must converge.
 - `TestEveryFixTemplateExists` — a template rename cannot silently break fixes.
+- `TestEveryRelativeLinkResolves` — a doc pointing at a file that was renamed.
+- `TestMissingBaselineFileIsRecordedNotFatal` — a baseline nobody can create.
 
 ## Extending
 
