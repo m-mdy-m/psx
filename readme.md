@@ -45,11 +45,14 @@ rules:
   readme: error
   license: warning
   gitignore: info
-  # ... and a dozen more
+  # ... and ten more
 ```
 
-**Skipping this step is fine** — psx will check all 43 rules instead. It just tells you
-more than you probably want on day one.
+One rule is an error, one is a warning, the rest are suggestions. `rules` is an
+allow-list, so this file is the list of what gets checked.
+
+**Skipping this step is fine** — psx checks all 43 rules instead, and reports 41 findings on
+a fresh project. Most are rules you will never care about.
 
 ### 2. See what's missing
 

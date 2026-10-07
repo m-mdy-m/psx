@@ -52,17 +52,25 @@ particular.
 psx check
 ```
 
-On a fresh project with nothing in it, you get a lot of output. That's expected — with
-no configuration psx checks everything it knows.
+On a fresh project with nothing in it you get **41 findings**:
 
-Two flags make the first look easier:
-
-```bash
-psx check --level warning    # hide the "info" suggestions
-psx check --only readme,license   # just these two rules
+```
+Result: 2 errors, 9 warnings, 30 info
+Status: FAILED
 ```
 
-Nothing is modified. `check` never writes to your project.
+That is not a sign your project is bad. With no configuration psx checks all 43 rules,
+including several you will never care about — ADR directories, a monorepo layout, a plugin
+manifest. Skip to step 2 to narrow it down.
+
+To get a manageable first look right now:
+
+```bash
+psx check --level warning    # 9 findings instead of 41
+psx check --only readme,license   # just these two
+```
+
+Nothing was modified. `check` never writes to your project.
 
 ---
 
@@ -74,27 +82,47 @@ That was a lot of noise, because psx was guessing. Tell it what matters.
 psx init
 ```
 
-psx inspects your files and writes a `psx.yml`. For a Go project with a `cmd/` directory
-it produces:
+psx inspects your files and writes a `psx.yml`. For a Go project with a `cmd/` directory it
+produces:
 
 ```yaml
 version: 1
 
 project:
   type: go        # worked out from go.mod
-  kind: cli        # worked out from the cmd/ directory
+  kind: cli       # worked out from the cmd/ directory
 
 rules:
   readme: error
   license: warning
   gitignore: info
-  # ...
+  gitattributes: info
+  makefile: info
+  scripts_folder: info
+  release_workflow: info
+  lockfile: info
+  docs_folder: info
+  adr: info
+  security: info
+  pull_request_template: info
+  issue_templates: info
 
 ignore:
+  - node_modules/
   - vendor/
+  - .git/
   - dist/
   - build/
+  - coverage/
+  - .psx/
+
+fix:
+  interactive: true
+  backup: false
 ```
+
+One `error`, one `warning`, and eleven `info`. That is the shape you want: exactly one thing
+is worth failing a build over.
 
 Three things to understand here:
 
@@ -115,20 +143,25 @@ in `vendor/` could make your tests look like they exist.
 
 ### If the generated file isn't right
 
-Edit it. That is the normal workflow, not an escape hatch. Two common changes:
+Edit it. That is the normal workflow, not an escape hatch. The most common change is adding
+a rule psx left out. It only checks what you list, so a rule you want has to be named:
 
 ```yaml
-# I don't care about containers at all
 rules:
-  ...
-  dockerfile: false
-  docker_compose: false
-  kubernetes: false
+  # ... keep everything init wrote ...
+  tests_folder: error    # psx did not enable this; you almost certainly want it
+```
 
-# These two are non-negotiable for us
+And the most common removal is the reverse — naming rules you do not care about. Note that
+adding `dockerfile: false` is pointless: it is not in the list, so it is not running
+already. Deleting it changes nothing.
+
+```yaml
 rules:
-  readme: error
-  tests_folder: error
+  adr: false             # remove these four lines
+  docs_folder: false
+  issue_templates: false
+  pull_request_template: false
 ```
 
 Verify what psx thinks your project is:
