@@ -7,9 +7,10 @@ to try it:
 psx check --config examples/go-cli.yml .
 ```
 
-Each file is validated by `TestExamplesAreValidConfigs`, so they all load. They are
-also what `psx init` produces for the matching profile, so `psx init --type go
---kind cli` gives you `go-cli.yml`.
+Each file is validated by `TestExamplesAreValidConfigs`, so they all load. Several are
+stricter than what `psx init` writes — `go-cli.yml` promotes tests and a lockfile to
+`error`, where init leaves them out. Copy the closest one and trim it, or start from
+`psx init` and tighten it.
 
 | File | For |
 | --- | --- |
