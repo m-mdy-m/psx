@@ -204,12 +204,15 @@ psx fix --dry-run
 ```
 
 ```
-would create  README.md
-would create  LICENSE
 would create  .gitignore
+would create  LICENSE
 would create  Makefile
+would create  README.md
+would create  scripts/build.sh
+would create  scripts/clean.sh
 would create  scripts/setup.sh
-would create  .github/workflows/ci.yml
+would create  scripts/test.sh
+would create  SECURITY.md
 ...
 Run without --dry-run to apply
 ```
@@ -233,20 +236,40 @@ Without `--yes` this asks before each change. Commit your work first — psx has
 
 ### The one-time questions
 
-Templates that mention your name or repository need to know them. On the first `fix` psx
-asks a few questions, guesses from git where it can, and saves the answers to
+Templates that mention your name or repository need to know them. The first `fix` in a
+project asks, offering a guess for each field and saving the answers to
 `.psx-project.yml`:
 
 ```
-Project name [demo]: 
-Author [Sam Rivera]: 
-GitHub username [samrivera]: 
+Project Information:
+
+Project name [notes]:
+Description [A notes project]:
+Author [Sam Rivera]:
+Email [sam@example.com]:
+GitHub username [samrivera]:
+Repository name [notes]:
+License (MIT/Apache-2.0/GPL-3.0/BSD-3-Clause) [MIT]:
 ```
 
-Add that file to `.gitignore`, or answer accurately — it ends up in your README.
+Press Enter to accept the guess in brackets. Commit that file or add it to `.gitignore` —
+either is fine, but if you ignore it you will be asked again next time.
 
-If psx is run in CI or through a pipe, it detects there is nobody there to answer and uses
-the git-derived values instead. It never blocks.
+Running in CI or through a pipe, psx detects that nobody is there to answer, skips the
+questions entirely and uses the values it inferred. It never blocks.
+
+To skip the questions on a terminal too, write the file yourself:
+
+```yaml
+# .psx-project.yml
+name: notes
+description: A tiny CLI for taking notes
+author: Sam Rivera
+email: sam@example.com
+github_user: samrivera
+repo_name: notes
+license: MIT
+```
 
 ---
 
@@ -257,15 +280,25 @@ psx check
 ```
 
 ```
+Info (2)
+
+  info   lockfile
+        No lockfile found; installs will not be reproducible
+        fix: Commit the lockfile your package manager generates
+  info   release_workflow
+        No release automation found
+        fix: Run 'psx fix --rule workflow_release'
+
 Result: 2 info
 Status: PASSED
 ```
 
-The two remaining `info` items need a version tag to exist. That is normal — not
-everything is fixable.
+Both are advisory and neither can be fixed for you: a lockfile comes out of your package
+manager, and a release workflow only matters once you publish something. `info` never fails
+a build, so leaving them is fine.
 
-Run `fix` a second time and you will see it finds nothing. `fix` only creates what is
-missing, so it always reaches a fixed point.
+Run `fix` a second time and it finds nothing. `fix` only creates what is missing, so it
+always reaches a fixed point.
 
 ---
 
@@ -313,11 +346,23 @@ jobs:
         with:
           go-version: stable
       - run: go build -o psx ./cmd/psx   # or download a release binary
-      - run: ./psx check --fail-on error
+      - run: ./psx check
 ```
 
-Note `--fail-on error`. Without it, `error`-severity findings still fail the job — this
-flag is for when you want a stricter or looser threshold than the default.
+`psx check` already exits non-zero when any `error`-severity rule fails, so nothing extra is
+needed. That is the whole configuration.
+
+If you want warnings to break the build too, say so explicitly:
+
+```bash
+psx check --fail-on warning
+```
+
+And to go the other way — report everything but never block:
+
+```bash
+psx check --fail-on none
+```
 
 ### Making the output useful
 

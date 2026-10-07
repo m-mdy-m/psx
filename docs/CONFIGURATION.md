@@ -315,11 +315,20 @@ Some templates need your name and repository — a README header, a `CODEOWNERS`
 reads those from git, asks for anything it cannot infer the first time you run `fix`, and
 caches the answers in `.psx-project.yml`.
 
+`--answer` overrides one template question. Exactly one key is read today:
+
 ```bash
-psx fix --answer name=notes --answer author="Sam Rivera"   # skip the questions
+psx fix --rule docker_compose --answer with_database=yes
 ```
 
-Decide whether to commit that file or add it to `.gitignore` — it is your call, and both
-work.
+Without it the compose file has one service; with it, `app` plus a `postgres` service and a
+named volume. Any other key is accepted and ignored, so a typo here fails silently.
 
-`check` never prompts and never writes it.
+Project metadata is **not** set through `--answer` — it comes from the prompt, then from git
+and the environment.
+
+Decide whether to commit that file or add it to `.gitignore` — your call, both work.
+
+`check` never prompts and never writes it. When psx runs without a terminal (CI, a pipe, or
+`PSX_NON_INTERACTIVE` set) it skips the questions entirely and uses the values it inferred,
+so `fix` never blocks.

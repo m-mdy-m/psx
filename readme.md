@@ -92,11 +92,15 @@ psx fix               # do it
 ```
 
 ```
-would create  README.md
-would create  LICENSE
 would create  .gitignore
+would create  LICENSE
 would create  Makefile
-would create  .github/workflows/ci.yml
+would create  README.md
+would create  scripts/build.sh
+would create  scripts/clean.sh
+would create  scripts/setup.sh
+would create  scripts/test.sh
+would create  SECURITY.md
 ...
 Run without --dry-run to apply
 ```
@@ -107,6 +111,9 @@ Then `psx check` again:
 Result: 2 info
 Status: PASSED
 ```
+
+The two leftovers are advisory: a lockfile, which only your package manager can produce, and
+a release workflow, which you only need once you publish something.
 
 Two things worth knowing:
 
@@ -166,8 +173,11 @@ It prints only what changed, so a long session stays readable.
 ## In CI
 
 ```yaml
-- run: psx check --fail-on error
+- run: psx check
 ```
+
+That is the whole job definition — `check` already exits non-zero on any error-severity
+failure. Add `--fail-on warning` if you want warnings to block too.
 
 To annotate the pull request instead of dumping text into the log:
 
@@ -176,11 +186,11 @@ psx check -o github     # inline annotations on the diff
 psx check -o sarif      # uploads to GitHub code scanning
 ```
 
-Turning it on for a repo that already has problems? Record them once, and stop the build
-breaking:
+Turning it on for a repo that already has problems? Run it once and psx writes down what it
+found, so only *new* problems break the build:
 
 ```bash
-psx check --baseline .psx-baseline.txt .    # known issues forgiven, new ones still fail
+psx check --baseline .psx-baseline.txt    # writes the file, then passes
 ```
 
 ---

@@ -46,7 +46,7 @@ func newFixCmd() *cobra.Command {
 	f.StringVar(&opts.Fix.RuleID, "rule", "", "fix only this rule id")
 	f.BoolVarP(&opts.Fix.Interactive, "interactive", "i", true, "confirm each change before applying")
 	f.StringToStringVar(&opts.Fix.Answers, "answer", nil,
-		"answer template questions, e.g. --answer ci_platform=github")
+		"answer a template question, e.g. --answer with_database=yes")
 
 	return cmd
 }
