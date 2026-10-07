@@ -1,0 +1,1407 @@
+# GitHub Actions templates, reusable and generic.
+#
+# Each entry is a standalone workflow file. Templates are split by concern so a
+# project composes only what it needs:
+#
+#   ci_*                     continuous integration
+#   release_*                tag-driven releases
+#   docker_*                 image builds and Docker Hub publishing
+#   deploy_*                 hosting and publishing
+#   codeql / security        scanning
+#
+# Variables available to every template: "{{project_name}}, {{repo_name}},"
+# {{github_username}}, {{domain}}, {{docker_image}}, {{main_branch}}.
+#
+# Keep each workflow independently runnable: a project should be able to copy a
+# single file and have it work, without depending on another file existing.
+
+# ===========================================================================
+# Continuous integration
+# ===========================================================================
+
+ci_go: |
+  name: CI
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    check:
+      name: Check
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            # Full history so `git describe` can produce a version.
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: stable
+            cache: true
+
+        - name: Vet
+          run: go vet ./...
+
+        - name: Test
+          run: go test -race -coverprofile=coverage.out ./...
+
+        - name: Verify formatting
+          run: |
+            unformatted=$(gofmt -l .)
+            if [ -n "$unformatted" ]; then
+              echo "::error::These files need gofmt:"
+              echo "$unformatted"
+              exit 1
+            fi
+
+        - name: Upload coverage
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: coverage
+            path: coverage.out
+            retention-days: 7
+            if-no-files-found: ignore
+
+ci_nodejs: |
+  name: CI
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    check:
+      name: Check
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+            version: 11
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 22
+            cache: pnpm
+
+        - name: Install dependencies
+          # A frozen lockfile makes the build reproducible, and fails loudly
+          # when the lockfile and manifest disagree.
+          run: pnpm install --frozen-lockfile
+
+        - name: Lint
+          run: pnpm lint
+
+        - name: Typecheck
+          run: pnpm typecheck
+
+        - name: Test
+          run: pnpm test
+
+        - name: Build
+          run: pnpm build
+
+ci_rust: |
+  name: CI
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    check:
+      name: Check
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Install toolchain
+          run: |
+            rustup toolchain install stable --profile minimal --component clippy,rustfmt
+            rustup default stable
+
+        - name: Cache cargo
+          uses: Swatinem/rust-cache@v2
+
+        - name: Format
+          run: cargo fmt --all -- --check
+
+        - name: Clippy
+          run: cargo clippy --all-targets --all-features -- -D warnings
+
+        - name: Test
+          run: cargo test --all-features
+
+ci_python: |
+  name: CI
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    check:
+      name: Check
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.12'
+            cache: pip
+
+        - name: Install dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install ruff pytest pytest-cov
+
+        - name: Lint
+          run: ruff check .
+
+        - name: Format check
+          run: ruff format --check .
+
+        - name: Test
+          run: pytest --cov --cov-report=xml
+
+        - name: Upload coverage
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: coverage
+            path: coverage.xml
+            retention-days: 7
+            if-no-files-found: ignore
+
+ci_monorepo: |
+  name: CI
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+      contents: read
+
+  concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    check:
+      name: Check all packages
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+            version: 11
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 22
+            cache: pnpm
+
+        - name: Install dependencies
+          run: pnpm install --frozen-lockfile
+
+        # --recursive covers every workspace member, so a broken package cannot
+        # pass just because the root scripts do not exercise it.
+        - name: Lint
+          run: pnpm -r lint
+
+        - name: Typecheck
+          run: pnpm -r typecheck
+
+        - name: Test
+          run: pnpm -r test
+
+        - name: Build
+          run: pnpm -r build
+
+# ===========================================================================
+# Releases
+# ===========================================================================
+
+release_go: |
+  name: Release
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+
+  permissions:
+    contents: write
+
+  concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build:
+      name: Build
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: stable
+
+        - name: Test
+          run: go test -race ./...
+
+        - name: Build
+          run: |
+            mkdir -p dist
+            go build -trimpath -ldflags "-s -w" \
+              -o "dist/{{project_name}}" ./cmd/{{project_name}}
+
+        - name: Checksum
+          run: cd dist && sha256sum * > checksums.txt
+
+        - name: Upload artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: release
+            path: dist/*
+            retention-days: 1
+
+    create-release:
+      name: Publish GitHub Release
+      needs: [build]
+      if: always() && startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: artifacts
+            pattern: release
+            merge-multiple: true
+
+        - name: Collect assets
+          run: |
+            mkdir -p release
+            if [[ -d artifacts ]]; then
+              find artifacts -type f -exec cp {} release/ \;
+            fi
+            ls -lh release/ || echo "(no assets)"
+
+        - name: Extract version
+          id: version
+          run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+        - name: Build release notes
+          run: |
+            VERSION="${{ steps.version.outputs.VERSION }}"
+
+            # Prefer the matching CHANGELOG section so the notes stay in one
+            # place; fall back to a generated summary.
+            if [[ -f CHANGELOG.md ]] && grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+              sed -n "/## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | sed '$d' > release_body.md
+            else
+              printf '## Release %s\n\nSee [CHANGELOG](https://github.com/%s/blob/main/CHANGELOG.md).\n' \
+                "${{ github.ref_name }}" "${{ github.repository }}" > release_body.md
+            fi
+
+        - name: Create release
+          uses: softprops/action-gh-release@v2
+          with:
+            tag_name: ${{ github.ref_name }}
+            name: '{{project_name}} ${{ github.ref_name }}'
+            body_path: release_body.md
+            files: release/*
+            draft: false
+            prerelease: false
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+release_linux: |
+  name: Release – Linux
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+    workflow_call:
+      outputs:
+        artifact-name:
+          description: "Name of the uploaded artifact"
+          value: ${{ jobs.build-linux.outputs.artifact-name }}
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: release-linux-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build-linux:
+      name: Build (Linux x86_64)
+      runs-on: ubuntu-22.04
+      outputs:
+        artifact-name: "{{project_name}}-linux-x86_64"
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: stable
+
+        - name: Cache build
+          uses: actions/cache@v4
+          with:
+            path: |
+              ~/.cache/go-build
+              ~/go/pkg/mod
+            key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+            restore-keys: go-${{ runner.os }}-
+
+        - name: Build
+          run: |
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+              go build -trimpath -ldflags "-s -w" \
+              -o "{{project_name}}-linux-x86_64" ./cmd/{{project_name}}
+
+        - name: Package tarball
+          run: |
+            VERSION="${{ github.ref_name }}"
+            PKG="{{project_name}}-${VERSION}-linux-x86_64"
+            mkdir -p "dist/${PKG}"
+            cp "{{project_name}}-linux-x86_64" "dist/${PKG}/"
+            cp README.md LICENSE "dist/${PKG}/" 2>/dev/null || true
+            tar czf "dist/${PKG}.tar.gz" -C dist "${PKG}"
+            rm -rf "dist/${PKG}"
+
+        - name: Checksum
+          run: cd dist && sha256sum *.tar.gz > checksums.txt
+
+        - name: Upload artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: "{{project_name}}-linux-x86_64"
+            path: dist/*
+            retention-days: 1
+
+release_windows: |
+  name: Release – Windows
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+    workflow_call:
+      outputs:
+        artifact-name:
+          description: "Name of the uploaded artifact"
+          value: ${{ jobs.build-windows.outputs.artifact-name }}
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: release-windows-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build-windows:
+      name: Build (Windows x86_64)
+      runs-on: windows-2022
+      outputs:
+        artifact-name: "{{project_name}}-windows-x86_64"
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: stable
+
+        - name: Build
+          shell: bash
+          run: |
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+              go build -trimpath -ldflags "-s -w" \
+              -o "{{project_name}}.exe" ./cmd/{{project_name}}
+
+        # PowerShell keeps the paths native, which Compress-Archive expects.
+        - name: Package zip
+          shell: pwsh
+          run: |
+            $version = "${{ github.ref_name }}"
+            $pkg = "{{project_name}}-$version-windows-x86_64"
+            $stage = "dist/$pkg"
+
+            New-Item -ItemType Directory -Force -Path $stage | Out-Null
+            Copy-Item "{{project_name}}.exe" $stage
+
+            foreach ($f in @("README.md", "LICENSE")) {
+              if (Test-Path $f) { Copy-Item $f $stage }
+            }
+
+            Compress-Archive -Path "dist/$pkg" -DestinationPath "dist/$pkg.zip"
+
+        - name: Upload artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: "{{project_name}}-windows-x86_64"
+            path: dist/*
+            retention-days: 1
+
+release_macos: |
+  name: Release – macOS
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+    workflow_call:
+      outputs:
+        artifact-name:
+          description: "Name of the uploaded artifact"
+          value: ${{ jobs.build-macos.outputs.artifact-name }}
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: release-macos-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build-macos:
+      name: Build (macOS arm64)
+      runs-on: macos-14
+      outputs:
+        artifact-name: "{{project_name}}-macos-arm64"
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: stable
+
+        - name: Build
+          run: |
+            mkdir -p dist
+            CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+              go build -trimpath -ldflags "-s -w" \
+              -o "dist/{{project_name}}-macos-arm64" ./cmd/{{project_name}}
+
+        - name: Package tarball
+          run: |
+            VERSION="${{ github.ref_name }}"
+            PKG="{{project_name}}-${VERSION}-macos-arm64"
+            mkdir -p "dist/${PKG}"
+            cp "dist/{{project_name}}-macos-arm64" "dist/${PKG}/"
+            cp README.md LICENSE "dist/${PKG}/" 2>/dev/null || true
+            tar czf "dist/${PKG}.tar.gz" -C dist "${PKG}"
+            rm -rf "dist/${PKG}"
+
+        - name: Upload artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: "{{project_name}}-macos-arm64"
+            path: dist/*
+            retention-days: 1
+
+release_nodejs: |
+  name: Release
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+
+  permissions:
+    contents: read
+    id-token: write
+
+  concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    test:
+      name: Test
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+            version: 11
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 22
+            registry-url: https://registry.npmjs.org
+            cache: pnpm
+
+        - name: Install
+          run: pnpm install --frozen-lockfile
+
+        - name: Test
+          run: pnpm test
+
+    publish:
+      name: Publish to npm
+      needs: [test]
+      if: startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+            version: 11
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 22
+            registry-url: https://registry.npmjs.org
+            cache: pnpm
+
+        - name: Install
+          run: pnpm install --frozen-lockfile
+
+        - name: Build
+          run: pnpm build
+
+        # --provenance links the published tarball to this exact commit
+        # without needing a long-lived token.
+        - name: Publish
+          run: pnpm publish --provenance --access public
+          env:
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    github-release:
+      name: GitHub Release
+      needs: [publish]
+      if: always() && startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+
+      steps:
+        - name: Create release
+          uses: softprops/action-gh-release@v2
+          with:
+            generate_release_notes: true
+            draft: false
+
+release_rust: |
+  name: Release
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+
+  permissions:
+    contents: write
+
+  concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    release:
+      name: Release
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Install toolchain
+          run: rustup toolchain install stable --profile minimal
+
+        - name: Test
+          run: cargo test --all-features
+
+        - name: Build
+          run: cargo build --release --locked
+
+        # goreleaser cross-compiles, signs checksums and writes the release in
+        # one pass, which removes the per-platform matrix entirely.
+        - name: Run goreleaser
+          uses: goreleaser/goreleaser-action@v6
+          with:
+            distribution: goreleaser
+            version: latest
+            args: release --clean
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ===========================================================================
+# Docker
+# ===========================================================================
+
+docker_build: |
+  name: Docker
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: docker-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    # Build on every push and PR, but never push: tagged releases are published
+    # by the release workflow, so a branch build cannot overwrite a release tag.
+    build:
+      name: Build
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v4
+
+        - name: Build image (no push)
+          uses: docker/build-push-action@v6
+          with:
+            context: .
+            push: false
+            platforms: linux/amd64
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
+
+docker_hub: |
+  name: Docker Hub
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+
+  permissions:
+    contents: read
+
+  concurrency:
+    group: docker-hub-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build:
+      name: Build ${{ matrix.platform }}
+      strategy:
+        fail-fast: false
+        matrix:
+          include:
+            - platform: linux/amd64
+              runner: ubuntu-latest
+            - platform: linux/arm64
+              # Native arm64 runner: no QEMU emulation, so builds are fast.
+              runner: ubuntu-24.04-arm
+      runs-on: ${{ matrix.runner }}
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v4
+
+        - name: Log in to Docker Hub
+          uses: docker/login-action@v4
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_TOKEN }}
+
+        - name: Prepare platform tag
+          id: platform
+          run: echo "pair=${PLATFORM/\//-}" >> "$GITHUB_OUTPUT"
+          env:
+            PLATFORM: ${{ matrix.platform }}
+
+        # Each platform pushes by digest only. Tags are applied once, after the
+        # manifest is assembled, so a partial failure never leaves a tag
+        # pointing at a missing architecture.
+        - name: Build and push by digest
+          id: build
+          uses: docker/build-push-action@v6
+          with:
+            context: .
+            platforms: ${{ matrix.platform }}
+            push: true
+            outputs: type=image,name={{docker_image}},push-by-digest=true,name-canonical=true
+            cache-from: type=gha,scope=${{ matrix.platform }}
+            cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+        - name: Export digest
+          run: |
+            mkdir -p /tmp/digests
+            digest="${{ steps.build.outputs.digest }}"
+            touch "/tmp/digests/${digest#sha256:}"
+
+        - name: Upload digest
+          uses: actions/upload-artifact@v4
+          with:
+            name: digests-${{ steps.platform.outputs.pair }}
+            path: /tmp/digests/*
+            if-no-files-found: error
+            retention-days: 1
+
+    publish:
+      name: Publish multi-arch manifest
+      needs: [build]
+      if: always() && startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Download digests
+          uses: actions/download-artifact@v4
+          with:
+            path: /tmp/digests
+            pattern: digests-*
+            merge-multiple: true
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v4
+
+        - name: Log in to Docker Hub
+          uses: docker/login-action@v4
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_TOKEN }}
+
+        - name: Extract metadata
+          id: meta
+          uses: docker/metadata-action@v5
+          with:
+            images: "{{docker_image}}"
+            tags: |
+              type=semver,pattern={{version}}
+              type=semver,pattern={{major}}.{{minor}}
+              type=semver,pattern={{major}}
+              type=raw,value=latest
+
+        - name: Create manifest list and push
+          working-directory: /tmp/digests
+          run: |
+            docker buildx imagetools create \
+              $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf '{{docker_image}}@sha256:%s ' *)
+          env:
+            DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
+
+        - name: Inspect published image
+          run: docker buildx imagetools inspect {{docker_image}}:${{ steps.meta.outputs.version }}
+
+docker_ghcr: |
+  name: Publish to GHCR
+
+  on:
+    push:
+      branches: [main]
+      tags: ['v*.*.*']
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+    packages: write
+
+  concurrency:
+    group: ghcr-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build:
+      name: Build and publish
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v4
+
+        - name: Log in to GitHub Container Registry
+          uses: docker/login-action@v4
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Extract metadata
+          id: meta
+          uses: docker/metadata-action@v5
+          with:
+            images: ghcr.io/${{ github.repository }}
+            tags: |
+              type=semver,pattern={{version}}
+              type=semver,pattern={{major}}.{{minor}}
+              type=raw,value=latest
+              type=sha,format=long
+
+        - name: Build and push
+          uses: docker/build-push-action@v6
+          with:
+            context: .
+            platforms: linux/amd64,linux/arm64
+            push: ${{ github.event_name != 'pull_request' }}
+            tags: ${{ steps.meta.outputs.tags }}
+            labels: ${{ steps.meta.outputs.labels }}
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
+
+# ===========================================================================
+# Deployment
+# ===========================================================================
+
+deploy_github_pages: |
+  name: Deploy website
+
+  on:
+    push:
+      branches: [main]
+      paths:
+        - 'website/**'
+        - '.github/workflows/deploy-website.yml'
+    workflow_dispatch:
+
+  permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+  concurrency:
+    group: pages
+    cancel-in-progress: true
+
+  jobs:
+    build:
+      name: Build
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+            version: 11
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 22
+            cache: pnpm
+            cache-dependency-path: website/pnpm-lock.yaml
+
+        - name: Install dependencies
+          working-directory: website
+          run: pnpm install --frozen-lockfile
+
+        - name: Build website
+          working-directory: website
+          run: pnpm build
+
+        # GitHub Pages serves 404.html for unknown paths, so copying index.html
+        # gives client-side routing a working fallback.
+        - name: SPA fallback for GitHub Pages
+          run: cp website/dist/index.html website/dist/404.html
+
+        - name: Setup GitHub Pages
+          uses: actions/configure-pages@v6
+
+        - name: Upload Pages artifact
+          uses: actions/upload-pages-artifact@v5
+          with:
+            path: website/dist
+
+    deploy:
+      name: Deploy to GitHub Pages
+      needs: [build]
+      runs-on: ubuntu-latest
+
+      environment:
+        name: github-pages
+        url: ${{ steps.deployment.outputs.page_url }}
+
+      steps:
+        - name: Deploy
+          id: deployment
+          uses: actions/deploy-pages@v4
+
+deploy_docs: |
+  name: Deploy docs
+
+  on:
+    push:
+      branches: [main]
+      paths:
+        - 'docs/**'
+        - '.github/workflows/deploy-docs.yml'
+    workflow_dispatch:
+
+  permissions:
+    contents: write
+
+  jobs:
+    build:
+      name: Build documentation
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Setup Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.12'
+            cache: pip
+
+        - name: Install mkdocs
+          run: pip install mkdocs-material mkdocs-minify-plugin
+
+        # mkdocs build fails on broken internal links, so a bad cross-reference
+        # breaks the build instead of shipping.
+        - name: Build
+          run: mkdocs build --strict
+
+        - name: Publish to gh-pages
+          run: |
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            git checkout --orphan gh-pages
+            git reset --hard
+            cp -r site/* . 2>/dev/null || true
+            touch .nojekyll
+
+            git add -A
+            git commit -m "docs: update ${{ github.sha }}"
+            git push -f origin gh-pages
+
+deploy_container: |
+  name: Deploy container
+
+  on:
+    push:
+      branches: [main]
+    workflow_dispatch:
+
+  permissions:
+    contents: read
+
+  jobs:
+    deploy:
+      name: Deploy to server
+      runs-on: ubuntu-latest
+      environment: production
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Pull image
+          run: |
+            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login \
+              ${{ secrets.REGISTRY_URL }} -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+            docker pull {{docker_image}}:latest
+
+        - name: Deploy over SSH
+          env:
+            DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+            DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          run: |
+            mkdir -p ~/.ssh
+            echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+
+            # Deploy over SSH rather than opening a port on the host: the image
+            # is pulled by the server, so only the tag needs to travel.
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "deploy@$DEPLOY_HOST" '
+                set -euo pipefail
+                cd /opt/{{repo_name}}
+                docker compose pull
+                docker compose up -d --remove-orphans
+                docker image prune -f
+              '
+
+# ===========================================================================
+# Security
+# ===========================================================================
+
+codeql: |
+  name: CodeQL
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+    schedule:
+      # A weekly scan catches advisories published after the last commit.
+      - cron: '23 4 * * 1'
+
+  permissions:
+    contents: read
+    security-events: write
+
+  concurrency:
+    group: codeql-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    analyze:
+      name: Analyze
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Initialize CodeQL
+          uses: github/codeql-action/init@v3
+          with:
+            languages: ${{ matrix.language }}
+            queries: security-and-quality
+
+        - name: Autobuild
+          uses: github/codeql-action/autobuild@v3
+
+        - name: Perform CodeQL analysis
+          uses: github/codeql-action/analyze@v3
+          with:
+            category: '/language:${{ matrix.language }}'
+
+      strategy:
+        fail-fast: false
+        matrix:
+          language: [go, javascript-typescript]
+
+security_dependency_review: |
+  name: Dependency review
+
+  on:
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  jobs:
+    review:
+      name: Review dependency changes
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        # Blocks a PR that introduces a known-vulnerable or unmaintained
+        # dependency, before it reaches the default branch.
+        - name: Review dependencies
+          uses: actions/dependency-review-action@v4
+          with:
+            fail-on-severity: moderate
+
+security_secret_scan: |
+  name: Secret scan
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  permissions:
+    contents: read
+
+  jobs:
+    scan:
+      name: Scan for secrets
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Detect secrets
+          uses: gitleaks/gitleaks-action@v2
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# -----------------------------------------------------------------------------
+# Aggregate release: delegates to the per-platform workflows, then publishes one
+# release. Keeps release.yml small while each platform stays independently
+# runnable via workflow_call.
+# -----------------------------------------------------------------------------
+
+release_aggregate: |
+  name: Release
+
+  on:
+    push:
+      tags: ['v*.*.*']
+    workflow_dispatch: {}
+
+  permissions:
+    contents: write
+
+  concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
+  jobs:
+    build-linux:
+      name: Build � Linux x86_64
+      uses: ./.github/workflows/release-linux.yml
+      permissions:
+        contents: read
+
+    build-windows:
+      name: Build � Windows x86_64
+      uses: ./.github/workflows/release-windows.yml
+      permissions:
+        contents: read
+
+    build-macos:
+      name: Build � macOS arm64
+      uses: ./.github/workflows/release-macos.yml
+      permissions:
+        contents: read
+
+    create-release:
+      name: Publish GitHub Release
+      needs: [build-linux, build-windows, build-macos]
+      # always() so a partial failure still uploads whatever succeeded, which is
+      # preferable to discarding a working build.
+      if: always() && startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Download all artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: artifacts
+            continue-on-error: true
+
+        - name: Collect release assets
+          run: |
+            mkdir -p release
+            if [[ -d artifacts ]]; then
+              find artifacts -type f \
+                \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.dmg' \
+                   -o -name '*.deb' -o -name '*setup*.exe' -o -name 'checksums.txt' \) \
+                -exec cp {} release/ \;
+            fi
+            echo "Release assets:"
+            ls -lh release/ || echo "(none)"
+
+        - name: Extract version from tag
+          id: version
+          run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+        - name: Determine contributors
+          id: contributors
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            CURRENT_TAG="${GITHUB_REF#refs/tags/}"
+            REPO="${{ github.repository }}"
+            PREV_TAG=$(git tag --sort=v:refname | grep -B1 "^${CURRENT_TAG}$" | head -1)
+
+            if [[ -z "$PREV_TAG" || "$PREV_TAG" == "$CURRENT_TAG" ]]; then
+              HEADER="## Contributors"
+              CONTRIB=$(gh api "repos/${REPO}/contributors?per_page=100" \
+                --jq '.[].login' \
+                | grep -v 'github-actions\[bot\]' \
+                | sed 's/^/- @/')
+            else
+              HEADER="## Contributors (${PREV_TAG} ? ${CURRENT_TAG})"
+              CONTRIB=$(git log "${PREV_TAG}..${CURRENT_TAG}" --format='%H' \
+                | while read -r sha; do
+                    gh api "repos/${REPO}/commits/${sha}" \
+                      --jq '.author.login // empty' 2>/dev/null
+                  done \
+                | grep -v '^$' | grep -v 'github-actions\[bot\]' \
+                | sort -u | sed 's/^/- @/')
+            fi
+            { echo "header=${HEADER}"; echo "list<<EOF"; echo "${CONTRIB}"; echo "EOF"; } \
+              >> "$GITHUB_OUTPUT"
+
+        - name: Build release notes
+          run: |
+            VERSION="${{ steps.version.outputs.VERSION }}"
+
+            # Prefer the matching CHANGELOG section, then append installation
+            # notes and contributors.
+            if [[ -f CHANGELOG.md ]] && grep -q "## \[${VERSION}\]" CHANGELOG.md; then
+              sed -n "/## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | sed '$d' > release_body.md
+            else
+              printf '## Release %s\n\nSee [CHANGELOG](https://github.com/%s/blob/main/CHANGELOG.md) for details.\n' \
+                "${{ github.ref_name }}" "${{ github.repository }}" > release_body.md
+            fi
+
+            cat >> release_body.md << 'NOTES'
+
+            ---
+
+            ## Installation
+
+            ### Linux (x86_64)
+
+            ```bash
+            tar xzf {{project_name}}-vVERSION-linux-x86_64.tar.gz
+            cd {{project_name}}-vVERSION-linux-x86_64
+            sudo install -m 0755 {{project_name}} /usr/local/bin/
+            ```
+
+            ### Windows (x86_64)
+
+            Extract `{{project_name}}-vVERSION-windows-x86_64.zip` and run `{{project_name}}.exe`.
+
+            ### macOS (arm64)
+
+            ```bash
+            tar xzf {{project_name}}-vVERSION-macos-arm64.tar.gz
+            sudo install -m 0755 {{project_name}}-vVERSION-macos-arm64/{{project_name}} /usr/local/bin/
+            ```
+
+            ---
+
+            ## Updating
+
+            ```bash
+            {{project_name}} --version
+            ```
+
+            See the [changelog](https://github.com/{{github_username}}/{{repo_name}}/blob/main/CHANGELOG.md)
+            for the full list of changes.
+            NOTES
+
+            sed -i "s/VERSION/${VERSION}/g" release_body.md
+
+            cat >> release_body.md << NOTES
+
+            ${{ steps.contributors.outputs.header }}
+
+            ${{ steps.contributors.outputs.list }}
+            NOTES
+
+        - name: Create GitHub Release
+          uses: softprops/action-gh-release@v2
+          with:
+            tag_name: ${{ github.ref_name }}
+            name: '{{project_name}} ${{ github.ref_name }}'
+            body_path: release_body.md
+            files: release/*
+            draft: false
+            prerelease: false
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

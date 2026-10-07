@@ -1,0 +1,53 @@
+# A Go command-line tool.
+#
+# Biased towards release mechanics: users install this, so the README, the Makefile
+# and the release pipeline matter more than container tooling.
+#
+#   psx init --type go --kind cli
+version: 1
+
+project:
+  type: go
+  kind: cli
+
+rules:
+  # Installation instructions are the whole point of a CLI README
+  readme: error
+  license: error
+  package_manager: error
+  lockfile: warning        # go.sum
+
+  # Contributor entry points
+  makefile: error
+  scripts_folder: info
+  src_folder: error        # cmd/, internal/ or pkg/
+
+  # Correctness
+  tests_folder: error
+  editorconfig: info
+  gitignore: warning
+  gitattributes: info
+
+  # Shipping binaries to users
+  release_workflow: error
+  workflow_release: warning
+  workflow_ci: error
+  dependency_updates: warning
+  workflow_secret_scan: warning
+
+  # Keeping the project understandable as it grows
+  docs_folder: info
+  adr: info
+  security: warning
+  code_owners: info
+  pull_request_template: info
+  issue_templates: info
+
+fix:
+  interactive: true
+
+ignore:
+  - vendor/
+  - dist/
+  - bin/
+  - coverage/

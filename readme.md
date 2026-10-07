@@ -1,98 +1,222 @@
-# PSX - Project Structure Checker
+# psx
 
-**PSX** is a command-line tool that validates and standardizes project structures across different programming languages. It helps maintain consistency in your projects by checking for essential files, proper folder organization, and development best practices.
+**Check that a project has the files it should have — and create the ones it doesn't.**
 
-## Features
+Projects drift. The README describes a tool that no longer exists. There are no tests.
+Nobody remembers why `Dockerfile` is there. A new contributor has no idea how to build it.
 
-- **Auto-Fix** - Automatically creates missing files and folders
-- **Multi-Language Support** - Supports Node.js, Go, and generic projects
-- **Configurable** - Customize rules and severity levels via YAML
-- **Fast** - Parallel rule execution for quick validation
+psx finds that drift and fixes it.
 
-## Installation
+---
 
-### Quick Install (Recommended)
+## Install
 
-**Linux/macOS:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+Windows (PowerShell):
+
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1" -OutFile install.ps1; .\install.ps1 github
+irm https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1 | iex
 ```
 
-### Download Binary
+One static binary. Nothing else to install.
 
-Download pre-built binaries from [Releases](https://github.com/m-mdy-m/psx/releases):
+---
 
-- Linux (amd64, arm64)
-- macOS (amd64, arm64)  
-- Windows (amd64)
+## 60-second tour
 
-### Build from Source
-
-Requirements: Go 1.25+
+### 1. Say what kind of project this is
 
 ```bash
-git clone https://github.com/m-mdy-m/psx
-cd psx
-make build
-sudo make install
+psx init
 ```
 
-### Docker
+psx looks at your files, works out that this is a Go command-line tool, and writes a
+`psx.yml`:
 
-```bash
-docker pull bitsgenix/psx:latest
-docker run --rm -v $(pwd):/project psx:latest check
+```yaml
+version: 1
+project:
+  type: go
+  kind: cli
+rules:
+  readme: error
+  license: warning
+  gitignore: info
+  # ... and a dozen more
 ```
 
-See [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instructions.
+**Skipping this step is fine** — psx will check all 43 rules instead. It just tells you
+more than you probably want on day one.
 
-## Quick Start
+### 2. See what's missing
 
-**Check your project:**
 ```bash
-cd my-project
 psx check
 ```
 
-**Fix issues automatically:**
-```bash
-psx fix
+```
+Errors (1)
+
+  error  readme
+        No README file found in the project root
+        fix: psx fix --rule readme
+
+Warnings (1)
+
+  warn   license
+        No LICENSE file found
+        fix: psx fix --rule license
+
+Info (11)
+
+  info   adr
+        No ADR directory found
+        fix: psx fix --rule adr
+  ...
+
+Result: 1 errors, 1 warnings, 11 info
+Status: FAILED
 ```
 
-**Fix with confirmation:**
+Nothing was changed. `check` only reads — it never writes to your project and never asks
+you anything, so it is safe in scripts and CI.
+
+### 3. Create the missing files
+
 ```bash
-psx fix --interactive
+psx fix --dry-run     # preview — changes nothing
+psx fix               # do it
 ```
 
-## Development
+```
+would create  README.md
+would create  LICENSE
+would create  .gitignore
+would create  Makefile
+would create  .github/workflows/ci.yml
+...
+Run without --dry-run to apply
+```
 
-### Requirements
+Then `psx check` again:
 
-- Go 1.25+
-- Make
+```
+Result: 2 info
+Status: PASSED
+```
 
-## Contributing
+Two things worth knowing:
 
-Contributions are welcome! Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
+- **It will not overwrite your work.** A file that already has content is left alone.
+- **It always converges.** Run `fix` twice and the second run finds nothing, because it
+  only ever creates what is missing.
+
+---
+
+## Reading the output
+
+| Part | Meaning |
+| --- | --- |
+| `error` | Serious. Fails the build. |
+| `warn` | Should be fixed, but won't fail the build. |
+| `info` | Nice to have. Purely advisory. |
+| The rule name | Which rule failed. `psx explain <rule>` describes it. |
+| `fix:` | The exact command that resolves it. |
+| `Result:` / `Status:` | Totals, and whether the run passed. |
+
+Every finding is a command you can copy and run.
+
+---
+
+## Choosing what matters
+
+`psx init` gives you a reasonable set, but you decide. Edit `psx.yml`:
+
+```yaml
+rules:
+  readme: error       # fail the build
+  tests_folder: error # fail the build
+  license: warning    # mention it, don't fail
+  dockerfile: false   # don't mention it at all
+```
+
+**Anything you don't list is switched off.** That file *is* your rule list.
+
+Ready-made configs for Go CLIs, npm packages, Rust binaries, Python packages, monorepos
+and microservices are in [examples/](examples/README.md).
+
+Full reference: [Configuration](docs/CONFIGURATION.md) · [All rules](docs/RULES.md)
+
+---
+
+## While you work
+
+```bash
+psx watch            # re-check as you edit
+psx watch --fix      # and create missing files as you go
+```
+
+It prints only what changed, so a long session stays readable.
+
+---
+
+## In CI
+
+```yaml
+- run: psx check --fail-on error
+```
+
+To annotate the pull request instead of dumping text into the log:
+
+```bash
+psx check -o github     # inline annotations on the diff
+psx check -o sarif      # uploads to GitHub code scanning
+```
+
+Turning it on for a repo that already has problems? Record them once, and stop the build
+breaking:
+
+```bash
+psx check --baseline .psx-baseline.txt .    # known issues forgiven, new ones still fail
+```
+
+---
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `check` | Report problems. Read-only. |
+| `fix` | Create the missing files. |
+| `watch` | Re-check as you edit, optionally fixing. |
+| `init` | Write a `psx.yml` suited to the project. |
+| `rules` | List everything psx can check. |
+| `explain <rule>` | Describe one rule in detail. |
+| `workflows` | List the bundled GitHub Actions templates. |
+| `detect` | Show what psx thinks your project is. |
+
+---
+
+## Documentation
+
+**Start here**
+- [Getting started](docs/GETTING-STARTED.md) — a walkthrough from an empty folder
+
+**When you need detail**
+- [Configuration](docs/CONFIGURATION.md) — every setting, explained
+- [Rules](docs/RULES.md) — all 43, and what each one creates
+- [GitHub Actions templates](docs/WORKFLOWS.md) — 21 ready-made workflows
+- [Examples](examples/README.md) — configs for different project types
+
+**If you're contributing**
+- [Architecture](docs/ARCHITECTURE.md) · [Contributing](docs/CONTRIBUTING.md)
+- [Installation](docs/INSTALLATION.md) · [Verification log](docs/VERIFICATION.md)
+
+---
 
 ## License
 
-[MIT License](LICENSE) - Copyright (c) 2024 m-mdy-m
-
-## Links
-
-- **Repository:** https://github.com/m-mdy-m/psx
-- **Issues:** https://github.com/m-mdy-m/psx/issues
-- **Releases:** https://github.com/m-mdy-m/psx/releases
-- **Documentation:** [docs/](docs/)
-
-## Support
-
-- Email: bitsgenix@gmail.com
-- GitHub Discussions: [Discussions](https://github.com/m-mdy-m/psx/discussions)
-- Bug Reports: [Issues](https://github.com/m-mdy-m/psx/issues)
+[MIT](LICENSE) © m-mdy-m

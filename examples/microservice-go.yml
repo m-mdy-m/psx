@@ -1,0 +1,66 @@
+# A containerised HTTP service.
+#
+# Everything an on-call engineer needs at 3am: a healthcheck, documented environment
+# variables, an API contract, and a runbook.
+#
+#   psx init --type go --kind microservice
+version: 1
+
+project:
+  type: go
+  kind: microservice
+
+rules:
+  readme: warning          # shorter than an app's; the runbook carries the detail
+  license: warning
+  package_manager: error
+  lockfile: warning
+  gitignore: warning
+  gitattributes: info
+
+  src_folder: error
+  tests_folder: error
+
+  # Configuration must be documented without leaking secrets
+  env_example: error
+
+  # The API contract is a dependency other teams code against
+  openapi: error
+  api_docs: info
+
+  # Containers
+  dockerfile: error
+  dockerignore: error
+  docker_compose: warning  # for local development
+
+  # Production
+  kubernetes: info
+  nginx: info
+  architecture: error      # how the pieces fit together
+  runbook: error           # what to do when it breaks
+
+  # Automation
+  ci_config: error
+  workflow_ci: error
+  workflow_docker: warning
+  workflow_release: warning
+  dependency_updates: error
+  workflow_secret_scan: error
+  workflow_codeql: warning
+
+  # Operations
+  security: error
+  adr: info
+  code_owners: error
+  pull_request_template: info
+  issue_templates: info
+
+fix:
+  interactive: true
+  backup: true
+
+ignore:
+  - vendor/
+  - bin/
+  - dist/
+  - coverage/

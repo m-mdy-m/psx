@@ -1,61 +1,75 @@
-# PSX Default Configuration
-# Version 1.0.0
+# PSX default configuration.
+#
+# Rules listed here are enabled at the given severity. Setting a rule to false
+# disables it. Omitting the rules block entirely enables every rule at its
+# declared default severity.
 version: 1
 
-# Project detection
 project:
-  type: ""  # nodejs, go, etc...
+  # nodejs | go | rust | python | generic. Aliases such as "ts" or "golang" are
+  # resolved automatically; an unset value is detected from the project layout.
+  type: ""
 
-# Rules configuration
-# Severity: "error" | "warning" | "info" | false (disabled)
+# Severity: error | warning | info, or false to disable.
 rules:
-  # ============================================
-  # General Rules
-  # ============================================
+  # General
   readme: error
   license: warning
   gitignore: warning
+  gitattributes: info
   changelog: info
+  env_example: warning
+  package_manager: error
+  lockfile: warning
 
-  # ============================================
-  # Structure Rules
-  # ============================================
+  # Structure
   src_folder: warning
-  tests_folder: warning
+  tests_folder: error
   docs_folder: info
   scripts_folder: info
+  makefile: info
 
-  # ============================================
-  # Documentation Rules
-  # ============================================
-  adr: info
+  # Documentation
   contributing: info
-  api_docs: warning
   security: info
   code_of_conduct: info
+  support: info
+  adr: info
+  api_docs: warning
+  architecture: info
+  openapi: info
+  roadmap: info
+  runbook: info
   pull_request_template: info
   issue_templates: info
 
-  # ============================================
-  # CI/CD Rules
-  # ============================================
+  # CI/CD
   ci_config: info
+  release_workflow: info
+  dependency_updates: warning
+  workflow_ci: info
+  workflow_docker: info
+  workflow_release: info
+  workflow_codeql: warning
+  workflow_secret_scan: warning
 
-  # ============================================
-  # Quality Rules
-  # ============================================
-  pre_commit: info
+  # Quality
   editorconfig: info
+  pre_commit: info
   code_owners: info
+  node_version: info
 
-  # ============================================
-  # DevOps Rules
-  # ============================================
+  # DevOps
   dockerfile: info
   dockerignore: info
   docker_compose: info
+  kubernetes: info
+  nginx: info
 
-# Ignore patterns (like .gitignore)
+  # General (cont.)
+  funding: info
+
+# Paths excluded from every check and fix.
 ignore:
   - node_modules/
   - vendor/
@@ -63,4 +77,11 @@ ignore:
   - dist/
   - build/
   - coverage/
+  - .psx/
   - .psx-project.yml
+
+fix:
+  # Ask before applying each change.
+  interactive: true
+  # Copy the original file to .psx/backup before overwriting.
+  backup: false

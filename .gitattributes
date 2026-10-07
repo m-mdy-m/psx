@@ -1,0 +1,26 @@
+# Normalise line endings on check-in; keep binaries intact.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets must never be diffed or line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# Generated files are checked in; mark them so diffs stay readable.
+docs/RULES.md linguist-generated=true
+internal/config/embedded/*.yml linguist-generated=true
+internal/resources/embedded/*.yml linguist-generated=true

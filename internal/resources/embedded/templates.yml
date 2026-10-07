@@ -60,20 +60,20 @@ readme:
     See LICENSE file.
 
   go: |
-    # {{RepoName}}
+    # {{repo_name}}
 
     A Go project
 
     ## Installation
 
     ```bash
-    go get github.com/{{github_user}}/{{RepoName}}
+    go get github.com/{{github_username}}/{{repo_name}}
     ```
 
     ## Usage
 
     ```go
-    import "github.com/{{github_user}}/{{RepoName}}"
+    import "github.com/{{github_username}}/{{repo_name}}"
     ```
 
     ## Development
@@ -223,3 +223,23 @@ api_docs:
     ## Usage
 
     Add examples and API descriptions.
+
+# Docs directory index
+docs_index: |
+  # {{project_name}} documentation
+
+  {{project_desc}}
+
+  ## Contents
+
+  | Document | Purpose |
+  | -------- | ------- |
+  | [ARCHITECTURE.md](ARCHITECTURE.md) | System design at a high level |
+  | [CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
+  | [adr/](adr/) | Architecture decision records |
+
+  ## Conventions
+
+  - Keep documents in Markdown.
+  - Link to a decision record when a change is hard to reverse.
+  - Update the relevant document in the same pull request as the code change.

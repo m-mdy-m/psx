@@ -309,7 +309,7 @@ issue_templates_config: |
       url: https://github.com/{{github_username}}/{{repo_name}}/discussions
       about: Ask questions and discuss ideas
     - name: 📖 Documentation
-      url: https://{{docs_url}}
+      url: https://github.com/{{github_username}}/{{repo_name}}#readme
       about: Check out our documentation
     - name: 💡 Stack Overflow
       url: https://stackoverflow.com/questions/tagged/{{project_name}}
@@ -399,3 +399,244 @@ adr:
       ## References
 
       <!-- Links to related documents, discussions, or resources -->
+
+# Sponsorship
+# Funding
+#
+# GitHub parses .github/FUNDING.yml as structured data, not prose: every key is
+# a platform and its value is the account slug or URL. A markdown list here is
+# silently ignored by GitHub.
+funding: |
+  # Funding platforms. Remove the entries you do not use.
+  github: ["{{github_username}}"]
+  # open_collective: "{{repo_name}}"
+  # ko_fi: ""
+  # patreon: ""
+  # liberapay: ""
+  # issuehunt: ""
+  # buy_me_a_coffee: ""
+  # polar: ""
+  # thanks_dev: ""
+  # custom: ["https://example.com/donate"]
+
+# Support channels
+support: |
+  # Support
+
+  This project provides community support. Use the channels below before opening
+  an issue � you will usually get a faster answer.
+
+  ## Where to ask
+
+  - Questions and ideas: https://github.com/{{github_username}}/{{repo_name}}/discussions
+  - Bug reports: https://github.com/{{github_username}}/{{repo_name}}/issues
+  - Security reports: see [SECURITY.md](SECURITY.md)
+
+  ## Before asking
+
+  1. Search existing issues and discussions.
+  2. Include your version (`{{project_name}} --version`), OS, and Go/Node version.
+  3. Include a minimal reproduction if it is a bug.
+
+  ## Scope
+
+  Maintainers provide support on a best-effort basis. Private or paid support is
+  not available unless explicitly arranged.
+
+# Roadmap
+roadmap: |
+  # Roadmap
+
+  This document records where {{project_name}} is headed. Dates are intentions,
+  not commitments.
+
+  ## Now
+
+  - Core stability and correctness fixes
+  - Documentation coverage
+
+  ## Next
+
+  - Expanded rule and template coverage
+  - Better editor and CI integrations
+
+  ## Later
+
+  - Plugin ecosystem for custom rules
+  - Monorepo-aware checks
+
+  ## Recently shipped
+
+  <!-- Move items here as they land. -->
+
+  ## Contributing to the roadmap
+
+  Open a feature request issue to propose an item. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+# Architecture overview
+architecture: |
+  # Architecture
+
+  High-level design of {{project_name}}. This is a living document: update it in
+  the same pull request that changes the system it describes.
+
+  ## Overview
+
+  {{project_desc}}
+
+  ## Components
+
+  | Component | Responsibility |
+  | --------- | -------------- |
+  | core      | Domain logic, no I/O dependencies |
+  - adapter layer translating between the domain and the outside world
+
+  ## Request flow
+
+  1. Input arrives at the adapter layer and is validated.
+  2. The adapter converts it into a domain command.
+  3. The domain executes the command and returns a result.
+  4. The adapter serialises the result back to the caller.
+
+  ## Design decisions
+
+  Decisions with lasting consequences are recorded as ADRs in `docs/adr/`.
+  Read them before changing the component boundaries described above.
+
+  ## Constraints
+
+  - The core must not import I/O or transport libraries.
+  - Public interfaces are additive; breaking changes require a major version.
+  - Every component must be independently testable.
+
+# Operational runbook
+runbook: |
+  # Runbook
+
+  What to do when {{project_name}} misbehaves in production.
+
+  ## Alert triage
+
+  | Alert | First check | Likely cause |
+  | ----- | ----------- | ------------ |
+  | High error rate | Recent deploys | Bad release, upstream failure |
+  | High latency | Database saturation | Missing index, connection pool too small |
+  | Crash loop | Container logs | Panic at startup, missing config |
+  | Disk pressure | Log volume | Retention policy too lax |
+
+  ## Common incidents
+
+  ### Service will not start
+
+  1. Confirm required environment variables are set (see `.env.example`).
+  2. Check the container exits with a configuration error rather than a crash.
+  3. Verify the database is reachable from the service network.
+
+  ### Elevated error rate after a deploy
+
+  1. Roll back to the previous release.
+  2. Capture the failing request identifiers from logs.
+  3. Reproduce locally against the pre-release artifact.
+
+  ## Useful commands
+
+  ```bash
+  # Tail application logs
+  docker compose logs -f {{project_name}}
+
+  # Restart a single service
+  docker compose restart {{project_name}}
+
+  # Inspect resource usage
+  docker stats
+  ```
+
+  ## Escalation
+
+  Page the on-call engineer when customer impact is ongoing after a rollback.
+  Otherwise open an issue with the collected evidence.
+
+# OpenAPI starter document
+openapi: |
+  openapi: 3.1.0
+
+  info:
+    title: {{project_name}} API
+    version: 0.1.0
+    description: |
+      {{project_desc}}
+
+      This document is a starting point. Regenerate it from your handlers if
+      you use OpenAPI code generation.
+    license:
+      name: {{license}}
+      identifier: {{license}}
+
+  servers:
+    - url: http://localhost:8080
+      description: Local development
+
+  paths:
+    /health:
+      get:
+        summary: Liveness and readiness probe
+        operationId: getHealth
+        responses:
+          "200":
+            description: Service is healthy
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Health"
+
+    /v1/items:
+      get:
+        summary: List items
+        operationId: listItems
+        parameters:
+          - name: limit
+            in: query
+            description: Maximum number of items to return
+            required: false
+            schema:
+              type: integer
+              minimum: 1
+              maximum: 100
+              default: 20
+        responses:
+          "200":
+            description: A page of items
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [items]
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Item"
+
+  components:
+    schemas:
+      Health:
+        type: object
+        required: [status]
+        properties:
+          status:
+            type: string
+            enum: [ok, degraded]
+          uptime_seconds:
+            type: integer
+
+      Item:
+        type: object
+        required: [id, name]
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          created_at:
+            type: string
+            format: date-time

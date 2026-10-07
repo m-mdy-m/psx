@@ -1,64 +1,200 @@
-# Language definitions and metadata
+# Language profiles.
+#
+# aliases maps user-facing names to canonical language keys.
+# languages describes each language's tooling so generated scripts, .gitignore
+# bodies and fix expectations can be derived rather than hardcoded in Go.
 
 aliases:
-  # Node.js
   node: nodejs
   nodejs: nodejs
   javascript: nodejs
   js: nodejs
   typescript: nodejs
   ts: nodejs
-  
-  # Go
+  deno: nodejs
+  bun: nodejs
   golang: go
+  py: python
+  rs: rust
 
-# Language-specific metadata
 languages:
   nodejs:
-    name: "Node.js"
+    name: Node.js
     package_managers:
-      - name: "npm"
-        file: "package.json"
-        lock: "package-lock.json"
-        install_cmd: "npm install"
+      - name: pnpm
+        file: package.json
+        lock: pnpm-lock.yaml
+        install_cmd: pnpm install
         priority: 1
-      - name: "yarn"
-        file: "package.json"
-        lock: "yarn.lock"
-        install_cmd: "yarn install"
+      - name: yarn
+        file: package.json
+        lock: yarn.lock
+        install_cmd: yarn install
         priority: 2
-      - name: "pnpm"
-        file: "package.json"
-        lock: "pnpm-lock.yaml"
-        install_cmd: "pnpm install"
+      - name: npm
+        file: package.json
+        lock: package-lock.json
+        install_cmd: npm install
         priority: 3
-    
+      - name: bun
+        file: package.json
+        lock: bun.lockb
+        install_cmd: bun install
+        priority: 4
     test_patterns:
-      - "test/"
-      - "tests/"
-      - "__tests__/"
+      - test/
+      - tests/
+      - __tests__/
       - "**/*.test.js"
       - "**/*.test.ts"
       - "**/*.spec.js"
       - "**/*.spec.ts"
-    
     src_patterns:
-      - "src/"
-      - "lib/"
-    
+      - src/
+      - lib/
+    build_patterns:
+      - dist/
+      - build/
+    cache_patterns:
+      - node_modules/
+      - .next/
+      - .nuxt/
+      - .turbo/
+      - coverage/
+    install_commands:
+      - pnpm install
+      - yarn install
+      - npm ci
+    test_commands:
+      - pnpm test
+      - yarn test
+      - npm test
+    build_commands:
+      - pnpm build
+      - yarn build
+      - npm run build
+    start_commands:
+      - pnpm dev
+      - npm run dev
+
   go:
-    name: "Go"
+    name: Go
     package_managers:
-      - name: "go modules"
-        file: "go.mod"
-        lock: "go.sum"
-        install_cmd: "go mod download"
+      - name: go modules
+        file: go.mod
+        lock: go.sum
+        install_cmd: go mod download
         priority: 1
-    
     test_patterns:
       - "**/*_test.go"
-    
     src_patterns:
-      - "cmd/"
-      - "internal/"
-      - "pkg/"
+      - cmd/
+      - internal/
+      - pkg/
+    build_patterns:
+      - bin/
+    cache_patterns:
+      - vendor/
+      - coverage/
+    install_commands:
+      - go mod download
+    test_commands:
+      - go test -race ./...
+    build_commands:
+      - go build -o bin/ ./cmd/...
+    start_commands:
+      - go run ./cmd/...
+
+  rust:
+    name: Rust
+    package_managers:
+      - name: cargo
+        file: Cargo.toml
+        lock: Cargo.lock
+        install_cmd: cargo fetch
+        priority: 1
+    test_patterns:
+      - tests/
+      - src/**/*.rs
+    src_patterns:
+      - src/
+    build_patterns:
+      - target/
+    cache_patterns:
+      - target/
+    install_commands:
+      - cargo fetch
+    test_commands:
+      - cargo test
+    build_commands:
+      - cargo build --release
+    start_commands:
+      - cargo run
+
+  python:
+    name: Python
+    package_managers:
+      - name: uv
+        file: pyproject.toml
+        lock: uv.lock
+        install_cmd: uv sync
+        priority: 1
+      - name: poetry
+        file: pyproject.toml
+        lock: poetry.lock
+        install_cmd: poetry install
+        priority: 2
+      - name: pip
+        file: pyproject.toml
+        lock: requirements.txt
+        install_cmd: pip install -r requirements.txt
+        priority: 3
+    test_patterns:
+      - tests/
+      - test/
+      - "**/test_*.py"
+      - "**/*_test.py"
+    src_patterns:
+      - src/
+    build_patterns:
+      - dist/
+      - build/
+    cache_patterns:
+      - __pycache__/
+      - .venv/
+      - .pytest_cache/
+      - "*.egg-info/"
+    install_commands:
+      - uv sync
+      - poetry install
+      - pip install -r requirements.txt
+    test_commands:
+      - uv run pytest
+      - pytest
+    build_commands:
+      - uv build
+      - python -m build
+    start_commands:
+      - python -m {{project_name}}
+
+  generic:
+    name: Generic
+    package_managers: []
+    test_patterns:
+      - tests/
+      - test/
+    src_patterns:
+      - src/
+    build_patterns:
+      - build/
+      - dist/
+    cache_patterns:
+      - tmp/
+    install_commands:
+      - echo "Add your dependency install command here"
+    test_commands:
+      - echo "Add your test command here"
+    build_commands:
+      - echo "Add your build command here"
+    start_commands:
+      - echo "Add your start command here"

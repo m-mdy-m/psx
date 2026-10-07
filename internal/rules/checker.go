@@ -1,65 +1,38 @@
 package rules
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
+import "github.com/m-mdy-m/psx/internal/tree"
 
-	"github.com/m-mdy-m/psx/internal/utils"
-)
-
-
-
-func NewChecker(ctx *Context) *Checker {
-	return &Checker{ctx: ctx}
+type Checker struct {
+	snap *tree.Snapshot
 }
 
-func (c *Checker) CheckAny(patterns []string) bool {
-	for _, pattern := range patterns {
-		if c.checkPattern(pattern) {
-			return true
+func NewChecker(snap *tree.Snapshot) *Checker {
+	return &Checker{snap: snap}
+}
+
+func (c *Checker) CheckAny(patterns []string) (string, bool) {
+	if c == nil || c.snap == nil {
+		return "", false
+	}
+	for _, p := range patterns {
+		if c.check(p) {
+			return p, true
 		}
 	}
-	return false
+	return "", false
 }
 
-func (c *Checker) checkPattern(pattern string) bool {
-	fullPath := filepath.Join(c.ctx.ProjectPath, pattern)
-
-	if strings.Contains(pattern, "*") {
-		return c.checkGlob(fullPath)
-	}
-	exists, info := utils.FileExists(fullPath)
-	if !exists {
+// check resolves one pattern: a trailing slash demands a directory, a glob
+// matches recursively, and everything else must exist with content.
+func (c *Checker) check(pattern string) bool {
+	if pattern == "" {
 		return false
 	}
-	return c.validateContent(fullPath, info)
-}
-
-func (c *Checker) checkGlob(pattern string) bool {
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return false
+	if isDirPattern(pattern) {
+		return c.snap.NonEmpty(pattern)
 	}
-
-	if len(matches) == 0 {
-		return false
+	if hasGlobMeta(pattern) {
+		return len(c.snap.Glob(pattern)) > 0
 	}
-
-	for _, match := range matches {
-		exists, info := utils.FileExists(match)
-		if exists && c.validateContent(match, info) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (c *Checker) validateContent(path string, info os.FileInfo) bool {
-	if info.IsDir() {
-		isEmpty, err := utils.IsDirEmpty(path)
-		return err == nil && !isEmpty
-	}
-	return info.Size() > 0
+	return c.snap.HasFile(pattern)
 }

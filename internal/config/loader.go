@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 	"github.com/m-mdy-m/psx/internal/logger"
@@ -37,44 +38,50 @@ func init() {
 func GetRulesMetadata() *RulesMetadata {
 	return rulesMetadata
 }
+
+// Load resolves a configuration for projectPath.
+//
+// configFile may be empty, in which case the standard locations are searched and
+// the embedded defaults are used when nothing is found.
 func Load(configFile string, projectPath string) (*Config, error) {
 	var userConfig *Config
 	var err error
+
 	if configFile == "" {
 		logger.Verbose("Searching for config file...")
 		configFile, err = FindConfigFile(projectPath)
 		if err != nil || configFile == "" {
-			logger.Info("No config file found, using defaults")
+			logger.Verbose("No config file found, using embedded defaults")
 			return buildConfig(defaultConfig, projectPath, "")
 		}
 		logger.Verbose(fmt.Sprintf("Found config file: %s", configFile))
 	}
+
 	userConfig, err = readConfigFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config from %s: %w", configFile, err)
 	}
+	logger.Verbose(fmt.Sprintf("Parsed user config: %s", configFile))
 
-	logger.Verbose(fmt.Sprintf("Loaded user config from: %s", configFile))
-
-	result := Validate(userConfig)
-	if HasWarnings(result) {
-		logger.Warning("Configuration warnings:")
-		for _, warning := range result.Warnings {
-			logger.Warning(warning)
-		}
-	}
-	if !IsValid(result) {
+	if result := Validate(userConfig); !IsValid(result) {
 		logger.Error("Configuration validation failed:")
-		for _, err := range result.Errors {
-			logger.Error(fmt.Sprintf("  [%s] %s", err.Field, err.Message))
+		for _, e := range result.Errors {
+			logger.Error(fmt.Sprintf("  [%s] %s", e.Field, e.Message))
 		}
 		return nil, fmt.Errorf("config validation failed: %d errors", len(result.Errors))
+	} else {
+		for _, w := range result.Warnings {
+			logger.Warning(w)
+		}
 	}
 
-	logger.Success("Configuration loaded and validated")
 	projectType := resources.NormalizeProjectType(userConfig.Project.Type)
-
-	return buildConfig(userConfig, projectPath, projectType)
+	cfg, err := buildConfig(userConfig, projectPath, projectType)
+	if err != nil {
+		return nil, err
+	}
+	cfg.ConfigFile = configFile
+	return cfg, nil
 }
 
 func FindConfigFile(projectPath string) (string, error) {
@@ -158,7 +165,9 @@ func readConfigFile(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-// buildConfig builds a complete config with active rules
+// buildConfig resolves user input into the active rule set.
+// The normalized project type is written back onto the result so downstream
+// consumers cannot accidentally read the raw, un-normalized value.
 func buildConfig(userCfg *Config, projectPath string, projectType string) (*Config, error) {
 	cfg := &Config{
 		Version:     userCfg.Version,
@@ -166,14 +175,23 @@ func buildConfig(userCfg *Config, projectPath string, projectType string) (*Conf
 		Rules:       userCfg.Rules,
 		Ignore:      userCfg.Ignore,
 		Fix:         userCfg.Fix,
-		Path:        projectPath,
+		ProjectPath: projectPath,
 		Custom:      userCfg.Custom,
 		ActiveRules: make(map[string]*ActiveRule),
 	}
+	if projectType == "" {
+		projectType = "generic"
+	}
+	cfg.Project.Type = projectType
+	cfg.ProjectType = projectType
+	// Keep the raw value: an empty project.type must stay distinguishable from
+	// an explicit "generic", or detection can never run.
+	cfg.DeclaredType = strings.TrimSpace(userCfg.Project.Type)
+
 	enabledCount := 0
 	disabledCount := 0
 	if len(userCfg.Rules) == 0 {
-		logger.Verbose("Using default config - enabling all rules")
+		logger.Verbose("No rules declared, enabling all with default severity")
 		for id, meta := range rulesMetadata.Rules {
 			cfg.ActiveRules[id] = &ActiveRule{
 				ID:       id,
@@ -181,41 +199,33 @@ func buildConfig(userCfg *Config, projectPath string, projectType string) (*Conf
 				Severity: meta.DefaultSeverity,
 			}
 			enabledCount++
-			logger.Verbose(fmt.Sprintf("Rule %s enabled (default) with severity: %s", id, meta.DefaultSeverity))
 		}
 	} else {
-		logger.Verbose("Using user config - enabling only specified rules")
-
+		logger.Verbose("Using declared rules as an explicit allow-list")
 		for id, userSev := range userCfg.Rules {
-			// Get metadata
 			meta, exists := rulesMetadata.Rules[id]
 			if !exists {
 				logger.Warning(fmt.Sprintf("Unknown rule '%s' - skipping", id))
 				continue
 			}
 
-			// Parse severity
 			severity, err := ParseSeverity(userSev, meta.DefaultSeverity)
 			if err != nil {
 				logger.Warning(fmt.Sprintf("Rule %s: %v, skipping", id, err))
 				continue
 			}
-
-			// If disabled
 			if severity == nil {
 				logger.Verbose(fmt.Sprintf("Rule %s is disabled", id))
 				disabledCount++
 				continue
 			}
 
-			// Enable rule
 			cfg.ActiveRules[id] = &ActiveRule{
 				ID:       id,
 				Metadata: meta,
 				Severity: *severity,
 			}
 			enabledCount++
-			logger.Verbose(fmt.Sprintf("Rule %s enabled with severity: %s", id, *severity))
 		}
 	}
 
@@ -223,45 +233,44 @@ func buildConfig(userCfg *Config, projectPath string, projectType string) (*Conf
 	return cfg, nil
 }
 
-func GetPatterns(patterns any, projectType string) []string {
-	switch p := patterns.(type) {
-	case []any:
-		// Simple list of patterns
-		result := make([]string, 0, len(p))
-		for _, item := range p {
-			if s, ok := item.(string); ok {
-				result = append(result, s)
-			}
-		}
-		return result
-
-	case map[string]any:
-		if projectType != "" {
-			if langPatterns, exists := p[projectType]; exists {
-				if arr, ok := langPatterns.([]any); ok {
-					result := make([]string, 0, len(arr))
-					for _, item := range arr {
-						if s, ok := item.(string); ok {
-							result = append(result, s)
-						}
-					}
-					return result
-				}
-			}
-		}
-
-		if genericPatterns, exists := p["*"]; exists {
-			if arr, ok := genericPatterns.([]any); ok {
-				result := make([]string, 0, len(arr))
-				for _, item := range arr {
-					if s, ok := item.(string); ok {
-						result = append(result, s)
-					}
-				}
-				return result
-			}
-		}
+// ResolvePatterns returns the patterns that apply to projectType.
+//
+// Lookup order is "<type>", then "*", then "generic". The generic tier matters:
+// without it a rule that only declares a generic pattern would resolve to
+// nothing for an unrecognised project type.
+//
+// A rule that declares only language-specific tiers resolves to nothing for an
+// unrelated type, which the engine reports as skipped. Falling back to an
+// arbitrary language's patterns would apply Go-only expectations to a Python
+// project and produce misleading failures.
+func ResolvePatterns(patterns any, projectType string) []string {
+	table, ok := patterns.(map[string]any)
+	if !ok {
+		return toStringList(patterns)
 	}
 
-	return []string{}
+	for _, key := range []string{projectType, "*", "generic"} {
+		if key == "" {
+			continue
+		}
+		if list := toStringList(table[key]); len(list) > 0 {
+			return list
+		}
+	}
+	return nil
+}
+
+// toStringList coerces a YAML sequence into a string slice.
+func toStringList(v any) []string {
+	items, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		if s, ok := it.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

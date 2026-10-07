@@ -1,0 +1,57 @@
+# A pnpm monorepo.
+#
+# psx evaluates the repository root, not each workspace member, so the root carries the
+# documentation and CI. Per-package rules are not scoped yet — see the "Deliberately
+# excluded" section of ARCHITECTURE.md.
+#
+#   psx init --type nodejs --kind monorepo
+version: 1
+
+project:
+  type: nodejs
+  kind: monorepo
+
+rules:
+  readme: error            # explains the workspace layout
+  license: warning         # one license for the whole repo
+  package_manager: error
+  lockfile: error          # one shared pnpm-lock.yaml
+  gitignore: warning
+  gitattributes: info
+
+  # Shared documentation, written once for the whole repo
+  docs_folder: error
+  adr: info                # cross-cutting decisions
+  architecture: info
+  contributing: error
+  code_of_conduct: info
+  security: warning
+  support: info
+  code_owners: error       # routing reviews across many packages
+  pull_request_template: error
+  issue_templates: info
+
+  # CI has to fan out across packages
+  ci_config: error
+  workflow_ci: error
+  dependency_updates: warning
+  workflow_secret_scan: warning
+  workflow_codeql: warning
+
+  # An image per deployable package, not per workspace
+  dockerfile: info
+  dockerignore: warning
+  env_example: warning
+
+fix:
+  interactive: true
+
+ignore:
+  - node_modules/
+  # Per-package build output, wherever it lands.
+  - "packages/*/dist/"
+  - "packages/*/node_modules/"
+  - "apps/*/dist/"
+  - "apps/*/.next/"
+  - .turbo/
+  - coverage/

@@ -1,0 +1,57 @@
+# A published npm package.
+#
+# Skips Docker and Compose: a library is not deployed as a service. Emphasises the
+# things that matter for consumers — API docs, a changelog, and a committed lockfile.
+#
+#   psx init --type nodejs --kind library
+version: 1
+
+project:
+  type: nodejs
+  kind: library
+
+rules:
+  # Publishing hygiene
+  readme: error
+  license: error
+  package_manager: error
+  lockfile: error
+  changelog: error
+
+  # Consumers need to know what the package does and guarantees
+  api_docs: error
+  contributing: info
+
+  # Quality
+  tests_folder: error
+  src_folder: error
+  editorconfig: info
+  gitignore: warning
+  gitattributes: info
+
+  # Automation
+  ci_config: error
+  workflow_ci: error
+  workflow_secret_scan: warning
+  dependency_updates: warning
+
+  # Community
+  code_of_conduct: info
+  security: warning
+  code_owners: info
+  pull_request_template: info
+  issue_templates: info
+
+  # Node version drift between CI and developer machines
+  node_version: warning
+
+fix:
+  interactive: true
+
+ignore:
+  # Patterns containing * or [ must be quoted, or YAML reads them as an alias.
+  - node_modules/
+  - dist/
+  - coverage/
+  - .next/
+  - "*.tsbuildinfo"

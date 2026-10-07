@@ -1,0 +1,92 @@
+# Scaffolding psx has no rule for.
+#
+# `custom` is applied after the built-in rules, so anything created here coexists with
+# what `psx fix` generates.
+#
+# Paths are resolved against the project root and rejected if they escape it — including
+# through symlinks. A `psx.yml` in a cloned repository cannot make `psx fix --yes` write
+# outside the project.
+version: 1
+
+project:
+  type: nodejs
+
+rules:
+  readme: error
+  license: warning
+  gitignore: warning
+  tests_folder: error
+  editorconfig: info
+  ci_config: info
+
+fix:
+  interactive: true
+
+ignore:
+  - node_modules/
+  - dist/
+  - coverage/
+
+custom:
+  files:
+    # Document the environment without committing a real .env
+    - path: .env.example
+      content: |
+        # Copy to .env and fill in real values. Never commit .env.
+        NODE_ENV=development
+        PORT=3000
+        LOG_LEVEL=debug
+
+        # Database
+        DATABASE_URL=postgresql://user:password@localhost:5432/app
+
+        # Optional integrations
+        # REDIS_URL=redis://localhost:6379
+        # OPENAI_API_KEY=
+
+    # A lint setup psx has no template for yet
+    - path: .eslintrc.json
+      content: |
+        {
+          "root": true,
+          "env": { "node": true, "es2023": true },
+          "extends": ["eslint:recommended"],
+          "parserOptions": { "ecmaVersion": "latest", "sourceType": "module" },
+          "rules": {
+            "no-unused-vars": "warn",
+            "prefer-const": "error",
+            "eqeqeq": ["error", "smart"]
+          }
+        }
+
+    # A note for anyone who did not write the code
+    - path: .github/CODEOWNERS.tmp
+      content: ""
+
+  folders:
+    # An API layout psx's structure rules do not prescribe
+    - path: src/api
+      structure:
+        controllers: {}
+        middlewares: {}
+        routes: {}
+        validators: {}
+        openapi.yaml: ""
+
+    # A feature-first layout, as an alternative to layers
+    - path: src/features
+      structure:
+        auth:
+          service.ts: ""
+          types.ts: ""
+          index.ts: ""
+        billing:
+          service.ts: ""
+          types.ts: ""
+          index.ts: ""
+
+    # Documentation that has no rule
+    - path: docs/adr
+      structure:
+        README.md: ""
+        template.md: ""

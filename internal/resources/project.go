@@ -9,36 +9,50 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/m-mdy-m/psx/internal/logger"
-	"github.com/m-mdy-m/psx/internal/utils"
+	"github.com/m-mdy-m/psx/internal/ui"
 )
 
 const projectCacheFile = ".psx-project.yml"
 
-func GetProjectInfo(projectPath string, interactive bool) *ProjectInfo {
+// ResolveInfo returns project metadata for a directory.
+//
+// Metadata comes from the cache when present, then from git and the
+// environment. When allowPrompt is set the user is asked to fill in the gaps and
+// the result is cached; otherwise the project directory is left untouched, which
+// is what read-only commands require.
+func ResolveInfo(projectPath string, allowPrompt bool) (*ProjectInfo, error) {
 	if info, err := loadProjectInfo(projectPath); err == nil && info != nil {
 		logger.Verbose("Using cached project info")
-		return info
+		info.applyDefaults()
+		return info, nil
 	}
-
-	logger.Verbose("Creating new project info")
 
 	info := &ProjectInfo{
 		Name:    filepath.Base(projectPath),
 		License: "MIT",
 	}
 	info.loadFromGit()
-	if interactive {
-		info.promptUser()
-	} else {
-		info.setDefaults()
+	info.applyDefaults()
+
+	if !allowPrompt || !ui.IsInteractive() {
+		logger.Verbose("Inferring project info without prompting")
+		return info, nil
 	}
 
-	info.buildDerived()
+	logger.Step("Project metadata")
+	info.promptUser()
+	info.applyDefaults()
+
 	if err := saveProjectInfo(projectPath, info); err != nil {
-		logger.Warning(fmt.Sprintf("Failed to save project info: %v", err))
+		logger.Warning(fmt.Sprintf("Could not cache project info: %v", err))
 	}
+	return info, nil
+}
 
-	return info
+// applyDefaults fills blanks from git data and the environment.
+func (p *ProjectInfo) applyDefaults() {
+	p.setDefaults()
+	p.buildDerived()
 }
 
 func loadProjectInfo(projectPath string) (*ProjectInfo, error) {
@@ -88,31 +102,35 @@ func (p *ProjectInfo) promptUser() {
 	fmt.Println("Project Information:")
 	fmt.Println()
 
-	p.Name = utils.PromptInput("Project name", p.Name)
-	p.Description = utils.PromptInput("Description", p.Description)
-	p.Author = utils.PromptInput("Author", p.Author)
-	p.Email = utils.PromptInput("Email", p.Email)
-	p.GitHubUser = utils.PromptInput("GitHub username", p.GitHubUser)
-	p.RepoName = utils.PromptInput("Repository name", p.RepoName)
-	p.License = utils.PromptInput("License", p.License)
+	p.Name = ui.Input("Project name", p.Name)
+	p.Description = ui.Input("Description", p.Description)
+	p.Author = ui.Input("Author", p.Author)
+	p.Email = ui.Input("Email", p.Email)
+	p.GitHubUser = ui.Input("GitHub username", p.GitHubUser)
+	p.RepoName = ui.Input("Repository name", p.RepoName)
+	p.License = ui.Input("License (MIT/Apache-2.0/GPL-3.0/BSD-3-Clause)", p.License)
 }
 
+// setDefaults fills blanks from the environment.
+//
+// Guessed values are intentionally left blank rather than written as
+// placeholders: persisting "yourusername" would stop the prompt on the next run
+// and leak the placeholder into every generated file.
 func (p *ProjectInfo) setDefaults() {
-	if p.Author == "" {
-		p.Author = getDefaultAuthor()
-	}
-	if p.Email == "" {
-		p.Email = fmt.Sprintf("%s@example.com", strings.ToLower(p.Author))
-	}
-	if p.GitHubUser == "" {
-		p.GitHubUser = "yourusername"
-	}
-	if p.RepoName == "" {
-		p.RepoName = p.Name
-	}
-	if p.Description == "" {
-		p.Description = fmt.Sprintf("A %s project", p.Name)
-	}
+	p.Author = orDefault(p.Author, getDefaultAuthor())
+	p.Email = orDefault(p.Email, slugify(p.Author)+"@example.com")
+	p.RepoName = orDefault(p.RepoName, p.Name)
+	p.Description = orDefault(p.Description, "A "+p.RepoName+" project")
+	p.License = orDefault(p.License, "MIT")
+}
+
+// Complete reports whether every field a template may reference is known.
+// Incomplete projects still generate files; unresolved fields fall back to
+// sensible defaults at render time.
+func (p *ProjectInfo) Complete() bool {
+	return p != nil &&
+		p.Name != "" && p.Author != "" && p.Email != "" &&
+		p.GitHubUser != "" && p.RepoName != "" && p.License != ""
 }
 func (p *ProjectInfo) buildDerived() {
 	if p.GitHubUser != "" && p.RepoName != "" {
@@ -125,30 +143,65 @@ func (p *ProjectInfo) buildDerived() {
 	}
 }
 
+// ToVars returns the template variable set for this project.
+//
+// This is the single source of template variables: a template may only
+// reference keys defined here, which TestEveryTemplateRenders enforces.
 func (p *ProjectInfo) ToVars() map[string]string {
 	if p == nil {
-		p = &ProjectInfo{
-			Name:   "project",
-			Author: "Your Name",
-			Email:  "you@example.com",
-		}
-		p.buildDerived()
+		p = getDefaultProjectInfo()
 	}
 
+	name := orDefault(p.Name, "project")
+	desc := orDefault(p.Description, "A "+name+" project")
+	author := orDefault(p.Author, "Your Name")
+	email := orDefault(p.Email, slugify(author)+"@example.com")
+	user := orDefault(p.GitHubUser, "yourusername")
+	repo := orDefault(p.RepoName, name)
+	license := orDefault(p.License, "MIT")
+
 	vars := getCurrentVars()
-	vars["project_name"] = p.Name
-	vars["project_desc"] = p.Description
-	vars["author"] = p.Author
-	vars["fullname"] = p.Author
-	vars["email"] = p.Email
-	vars["github_username"] = p.GitHubUser
-	vars["repo_name"] = p.RepoName
-	vars["repo_url"] = p.RepoURL
-	vars["license"] = p.License
-	vars["domain"] = p.Domain
-	vars["docker_image"] = p.DockerImage
+	vars["project_name"] = name
+	vars["project_desc"] = desc
+	vars["author"] = author
+	vars["fullname"] = author
+	vars["email"] = email
+	vars["github_username"] = user
+	vars["repo_name"] = repo
+	vars["repo_url"] = fmt.Sprintf("https://github.com/%s/%s", user, repo)
+	vars["license"] = license
+	vars["domain"] = fmt.Sprintf("%s.github.io/%s", strings.ToLower(user), strings.ToLower(repo))
+	vars["docker_image"] = strings.ToLower(user + "/" + repo)
+	vars["module_path"] = fmt.Sprintf("github.com/%s/%s", user, repo)
 
 	return vars
+}
+
+// orDefault returns v, or fallback when v is blank.
+func orDefault(v, fallback string) string {
+	if strings.TrimSpace(v) == "" {
+		return fallback
+	}
+	return v
+}
+
+// slugify reduces a name to characters valid in an email local part.
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == ' ', r == '_', r == '-', r == '.':
+			b.WriteRune('.')
+		}
+	}
+	out := strings.Trim(b.String(), ".")
+	if out == "" {
+		return "user"
+	}
+	return out
 }
 
 // === Helpers ===

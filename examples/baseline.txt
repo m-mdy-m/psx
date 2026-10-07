@@ -1,0 +1,32 @@
+# psx baseline — accepted violations.
+#
+# This is NOT a psx configuration, and it is deliberately not YAML: it is one rule
+# id per line. The list names the rules whose violations are forgiven, so psx can be
+# introduced to an existing repository without failing the build on day one.
+#
+#   psx check --config examples/strict.yml --baseline examples/baseline.txt .
+#
+# How it behaves:
+#   - Violations listed here are reported as known issues, not failures.
+#   - Anything NOT listed still fails. Only debt already accrued is absorbed, so
+#     psx cannot be quietly ignored.
+#   - Delete a line when you fix the underlying problem.
+#
+# A JSON array of ids works too, if that suits your tooling better.
+#
+# The list is deliberately short: only rules that would have failed immediately.
+
+# No dependency manifest yet
+package_manager
+# No lockfile committed
+lockfile
+# .env.example never written
+env_example
+# Dependabot not configured
+dependency_updates
+# CI not set up
+ci_config
+# No README
+readme
+# No LICENSE
+license

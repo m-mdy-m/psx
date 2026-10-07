@@ -1,299 +1,278 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/logger"
-	"github.com/m-mdy-m/psx/internal/utils"
+	"github.com/m-mdy-m/psx/internal/resources"
 )
 
+// A fix is expressed entirely by rule metadata, so this type contains no
+// per-rule knowledge.
 type Fixer struct {
-	ctx       *Context
-	generator *ContentGenerator
-	resolver  *PatternResolver
+	ctx    *Context
+	gen    *ContentGenerator
+	opts   resources.Options
+	dryRun bool
+	force  bool
 }
 
-func NewFixer(ctx *Context) *Fixer {
+func NewFixer(ctx *Context, fixCtx *FixContext, opts resources.Options) *Fixer {
+	dryRun := fixCtx != nil && fixCtx.DryRun
+	force := fixCtx != nil && fixCtx.Force
 	return &Fixer{
-		ctx:       ctx,
-		generator: NewContentGenerator(ctx.ProjectInfo, ctx.ProjectType),
-		resolver:  NewPatternResolver(),
+		ctx:    ctx,
+		gen:    NewContentGenerator(ctx.ProjectInfo, ctx.ProjectType),
+		opts:   opts,
+		dryRun: dryRun,
+		force:  force,
 	}
 }
 
-func Fix(cfg *config.Config, fixCtx *FixContext, ruleID string) (*FixResult, error) {
-	fixer := NewFixer(fixCtx.Context)
-	activeRule, exists := cfg.ActiveRules[ruleID]
-	if !exists {
-		return nil, fmt.Errorf("rule not found: %s", ruleID)
+// Fix applies a single rule. An unknown rule id is an error; a rule that
+// cannot be fixed is reported through the result.
+func Fix(cfg *config.Config, fixCtx *FixContext, ruleID string, opts resources.Options) (*FixResult, error) {
+	rule, ok := cfg.ActiveRules[ruleID]
+	if !ok {
+		return nil, fmt.Errorf("unknown rule: %s", ruleID)
 	}
-
-	return fixer.fix(ruleID, activeRule, fixCtx)
+	return NewFixer(fixCtx.Context, fixCtx, opts).fix(ruleID, rule), nil
 }
 
-func FixAll(cfg *config.Config, fixCtx *FixContext, failedRules []string) ([]*FixResult, error) {
-	fixer := NewFixer(fixCtx.Context)
-	results := make([]*FixResult, 0, len(failedRules))
+// FixAll applies fixes for the given rules and reports one result per rule.
+//
+// Failures are recorded in the returned results rather than swallowed, so the
+// caller can surface them.
+func FixAll(cfg *config.Config, fixCtx *FixContext, ruleIDs []string, opts resources.Options) []*FixResult {
+	f := NewFixer(fixCtx.Context, fixCtx, opts)
 
-	for _, ruleID := range failedRules {
-		activeRule, exists := cfg.ActiveRules[ruleID]
-		if !exists {
-			logger.Warning(fmt.Sprintf("Rule not found: %s", ruleID))
+	out := make([]*FixResult, 0, len(ruleIDs))
+	for _, id := range ruleIDs {
+		rule, ok := cfg.ActiveRules[id]
+		if !ok {
+			out = append(out, &FixResult{RuleID: id, Error: fmt.Errorf("unknown rule: %s", id)})
 			continue
 		}
-		result, err := fixer.fix(ruleID, activeRule, fixCtx)
-		if err != nil {
-			logger.Warning(fmt.Sprintf("Fix failed for %s: %v", ruleID, err))
-			continue
-		}
-
-		results = append(results, result)
+		out = append(out, f.fix(id, rule))
 	}
 
+	// User-declared entries are applied last, after the built-in rules.
 	if cfg.Custom != nil {
-		handler := NewCustomHandler(fixCtx.Context, cfg.Custom)
-		customResults, err := handler.ApplyCustomFiles(fixCtx)
-		if err != nil {
-			return results, err
-		}
-		results = append(results, customResults...)
+		handler := CustomHandler{root: fixCtx.Context.ProjectPath}
+		out = append(out, handler.Apply(cfg.Custom, fixCtx)...)
 	}
-	return results, nil
+	return out
 }
 
-func (f *Fixer) fix(ruleID string, rule *config.ActiveRule, fixCtx *FixContext) (*FixResult, error) {
+func (f *Fixer) fix(ruleID string, rule *config.ActiveRule) *FixResult {
+	res := &FixResult{RuleID: ruleID}
+
+	if !rule.Metadata.Fixable() {
+		res.Skipped = true
+		res.Reason = "no automatic fix available"
+		return res
+	}
+
 	logger.Verbose(fmt.Sprintf("Fixing: %s", ruleID))
 
-	if f.resolver.IsSpecialMultiFileRule(ruleID) || f.needsMultiFileGeneration(ruleID) {
-		multiFiles, err := f.generator.GenerateMultiple(ruleID)
-		if err == nil && len(multiFiles) > 0 {
-			return f.fixMultipleFiles(ruleID, multiFiles, fixCtx)
-		}
+	if files := rule.Metadata.FileFixes(); len(files) > 0 {
+		return f.fixFiles(res, rule, files)
 	}
-
-	patterns := config.GetPatterns(rule.Metadata.Patterns, f.ctx.ProjectType)
-	if len(patterns) == 0 {
-		return &FixResult{
-			RuleID:  ruleID,
-			Skipped: true,
-		}, nil
-	}
-
-	primaryPattern := patterns[0]
-	return f.fixSinglePattern(ruleID, primaryPattern, fixCtx)
+	return f.fixOne(res, rule)
 }
 
-func (f *Fixer) needsMultiFileGeneration(ruleID string) bool {
-	multiFileRules := []string{
-		"api_docs",
-		"src_folder",
-		"tests_folder",
-		"ci_config",
-		"issue_templates",
-		"adr",
-		"scripts_folder",
+func (f *Fixer) fixOne(res *FixResult, rule *config.ActiveRule) *FixResult {
+	spec := rule.Metadata.Fix
+	rel := strings.TrimSuffix(spec.Path, "/")
+
+	if reason, done := f.skipExisting(rel); done {
+		res.Skipped = true
+		res.Reason = reason
+		return res
 	}
 
-	for _, rule := range multiFileRules {
-		if ruleID == rule {
-			return true
+	isDir := strings.HasSuffix(spec.Path, "/")
+	if isDir {
+		full := filepath.Join(f.ctx.ProjectPath, filepath.FromSlash(rel))
+		res.Changes = []Change{{
+			Type:        ChangeCreateFolder,
+			Path:        full,
+			Description: "create " + rel + "/",
+		}}
+		if f.dryRun {
+			res.Fixed = true
+			return res
 		}
+		if err := os.MkdirAll(full, 0o755); err != nil {
+			res.Error = fmt.Errorf("create dir %s: %w", rel, err)
+			return res
+		}
+		res.Fixed = true
+		return res
 	}
 
-	return false
+	body, err := f.gen.Generate(rule, f.opts)
+	if err != nil {
+		// A template that does not exist for this project type is not a
+		// failure: the rule simply does not apply here.
+		if resources.IsNotApplicable(err) {
+			res.Skipped = true
+			res.Reason = err.Error()
+			return res
+		}
+		res.Error = err
+		return res
+	}
+	if strings.TrimSpace(body) == "" {
+		res.Error = fmt.Errorf("template produced an empty body; refusing to create %s", rel)
+		return res
+	}
+
+	mode := spec.Mode
+	if mode == 0 {
+		mode = resources.ModeFromName(rel)
+	}
+	return f.writeOne(res, rel, body, mode)
 }
 
-func (f *Fixer) fixSinglePattern(ruleID, pattern string, fixCtx *FixContext) (*FixResult, error) {
-	fullPath := filepath.Join(f.ctx.ProjectPath, pattern)
-
-	if f.shouldSkipPattern(fullPath) {
-		return &FixResult{RuleID: ruleID, Skipped: true}, nil
-	}
-
-	isFolder := f.isFolder(pattern)
-
-	if fixCtx.Interactive && !fixCtx.DryRun {
-		resourceType := "file"
-		prompt := fmt.Sprintf("Create %s %s?", resourceType, pattern)
-		if !utils.Prompt(prompt) {
-			return &FixResult{RuleID: ruleID, Skipped: true}, nil
+func (f *Fixer) fixFiles(res *FixResult, rule *config.ActiveRule, files map[string]string) *FixResult {
+	bodies, err := f.gen.GenerateFiles(rule, f.opts)
+	if err != nil {
+		if resources.IsNotApplicable(err) {
+			res.Skipped = true
+			res.Reason = err.Error()
+			return res
 		}
+		res.Error = err
+		return res
 	}
 
+	modes := f.gen.Modes(bodies, rule.Metadata.Fix)
 	var changes []Change
-	var err error
+	var failures []string
 
-	if fixCtx.DryRun {
-		changes = f.previewChanges(ruleID, pattern, fullPath, isFolder)
-	} else {
-		changes, err = f.applyChanges(ruleID, pattern, fullPath, isFolder)
-		if err != nil {
-			return &FixResult{
-				RuleID: ruleID,
-				Error:  err,
-			}, err
-		}
-	}
-
-	return &FixResult{
-		RuleID:  ruleID,
-		Fixed:   true,
-		Changes: changes,
-	}, nil
-}
-
-func (f *Fixer) fixMultipleFiles(ruleID string, files map[string]string, fixCtx *FixContext) (*FixResult, error) {
-	var changes []Change
-	var errors []string
-
-	if fixCtx.Interactive && !fixCtx.DryRun {
-		prompt := fmt.Sprintf("Create %d files for %s?", len(files), ruleID)
-		if !utils.Prompt(prompt) {
-			return &FixResult{RuleID: ruleID, Skipped: true}, nil
-		}
-	}
-
-	for relPath, content := range files {
-		fullPath := filepath.Join(f.ctx.ProjectPath, relPath)
-
-		if f.shouldSkipPattern(fullPath) {
+	for _, rel := range SortedPaths(bodies) {
+		if reason, done := f.skipExisting(rel); done {
+			logger.Verbose(fmt.Sprintf("Skipped %s: %s", rel, reason))
 			continue
 		}
-
-		if fixCtx.DryRun {
-			changes = append(changes, Change{
-				Type:        ChangeCreateFile,
-				Path:        fullPath,
-				Description: fmt.Sprintf("Create %s", relPath),
-				Content:     formatContent(content, 10),
-			})
-		} else {
-			err := utils.CreateFile(fullPath, content)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("%s: %v", relPath, err))
-				continue
-			}
-
-			changes = append(changes, Change{
-				Type:        ChangeCreateFile,
-				Path:        fullPath,
-				Description: fmt.Sprintf("Created %s", relPath),
-			})
+		body := bodies[rel]
+		if strings.TrimSpace(body) == "" {
+			failures = append(failures, rel+": empty template body")
+			continue
 		}
+		change, err := f.write(rel, body, modes[rel])
+		if err != nil {
+			failures = append(failures, rel+": "+err.Error())
+			continue
+		}
+		changes = append(changes, change...)
 	}
 
-	if len(errors) > 0 {
-		return &FixResult{
-			RuleID: ruleID,
-			Error:  fmt.Errorf("failed to create some files: %s", strings.Join(errors, "; ")),
-		}, nil
+	res.Changes = changes
+	if len(failures) > 0 {
+		// Partial success is still reported, alongside the failures.
+		res.Fixed = len(changes) > 0
+		res.Error = errors.New(strings.Join(failures, "; "))
+		return res
 	}
-
-	return &FixResult{
-		RuleID:  ruleID,
-		Fixed:   true,
-		Changes: changes,
-	}, nil
+	if len(changes) == 0 {
+		res.Skipped = true
+		res.Reason = "all target paths already exist"
+		return res
+	}
+	res.Fixed = true
+	return res
 }
 
-func (f *Fixer) shouldSkipPattern(fullPath string) bool {
-	exists, info := utils.FileExists(fullPath)
-	if !exists {
-		return false
+func (f *Fixer) writeOne(res *FixResult, rel, body string, mode uint32) *FixResult {
+	changes, err := f.write(rel, body, mode)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	res.Changes = changes
+	res.Fixed = true
+	return res
+}
+
+func (f *Fixer) write(rel, body string, mode uint32) ([]Change, error) {
+	full := filepath.Join(f.ctx.ProjectPath, filepath.FromSlash(rel))
+
+	if f.dryRun {
+		return []Change{{
+			Type:        ChangeCreateFile,
+			Path:        full,
+			Description: "create " + rel,
+			Content:     Preview(body, 10),
+			Mode:        mode,
+		}}, nil
 	}
 
-	// If it's a directory, check if empty
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return nil, fmt.Errorf("create parent of %s: %w", rel, err)
+	}
+	if err := os.WriteFile(full, []byte(body), os.FileMode(mode)); err != nil {
+		return nil, fmt.Errorf("write %s: %w", rel, err)
+	}
+	return []Change{{
+		Type:        ChangeCreateFile,
+		Path:        full,
+		Description: "created " + rel,
+		Mode:        mode,
+	}}, nil
+}
+
+// skipExisting reports whether a path must be left alone.
+//
+// A non-empty target is never overwritten unless --force is set; an existing
+// empty file or directory is filled in.
+func (f *Fixer) skipExisting(rel string) (string, bool) {
+	full := filepath.Join(f.ctx.ProjectPath, filepath.FromSlash(rel))
+
+	info, err := os.Lstat(full)
+	if err != nil {
+		return "", false // absent: nothing to preserve
+	}
+	if f.force {
+		return "", false
+	}
 	if info.IsDir() {
-		if isEmpty, _ := utils.IsDirEmpty(fullPath); !isEmpty {
-			return true
+		entries, err := os.ReadDir(full)
+		if err == nil && len(entries) > 0 {
+			return "directory is not empty", true
 		}
-		return false
+		return "", false
 	}
-
-	// If it's a file, check if has content
 	if info.Size() > 0 {
-		return true
+		return "file already has content", true
 	}
-
-	return false
+	return "", false
 }
 
-func (f *Fixer) isFolder(pattern string) bool {
-	return f.resolver.ResolveType(pattern) == PatternTypeFolder
-}
-
-func (f *Fixer) previewChanges(ruleID, pattern, fullPath string, isFolder bool) []Change {
-	changes := []Change{}
-
-	if isFolder {
-		changes = append(changes, Change{
-			Type:        ChangeCreateFolder,
-			Path:        fullPath,
-			Description: fmt.Sprintf("Create %s", pattern),
-			Content:     "",
-		})
-	} else {
-		content, _ := f.generator.Generate(ruleID, pattern)
-		changes = append(changes, Change{
-			Type:        ChangeCreateFile,
-			Path:        fullPath,
-			Description: fmt.Sprintf("Create %s", pattern),
-			Content:     formatContent(content, 10),
-		})
-	}
-
-	return changes
-}
-
-func (f *Fixer) applyChanges(ruleID, pattern, fullPath string, isFolder bool) ([]Change, error) {
-	changes := []Change{}
-
-	if isFolder {
-		err := utils.CreateDir(fullPath)
-		if err != nil {
-			return nil, err
-		}
-
-		changes = append(changes, Change{
-			Type:        ChangeCreateFolder,
-			Path:        fullPath,
-			Description: fmt.Sprintf("Created %s", pattern),
-		})
-	} else {
-		content, err := f.generator.Generate(ruleID, pattern)
-		if err != nil {
-			return nil, err
-		}
-
-		err = utils.CreateFile(fullPath, content)
-		if err != nil {
-			return nil, err
-		}
-
-		changes = append(changes, Change{
-			Type:        ChangeCreateFile,
-			Path:        fullPath,
-			Description: fmt.Sprintf("Created %s", pattern),
-		})
-	}
-
-	return changes, nil
-}
-
-func formatContent(content string, maxLines int) string {
+func Preview(content string, maxLines int) string {
 	if content == "" {
 		return ""
 	}
-
 	lines := strings.Split(content, "\n")
 	if len(lines) <= maxLines {
 		return content
 	}
+	return fmt.Sprintf("%s\n... (%d more lines)",
+		strings.Join(lines[:maxLines], "\n"), len(lines)-maxLines)
+}
 
-	preview := strings.Join(lines[:maxLines], "\n")
-	remaining := len(lines) - maxLines
-	return fmt.Sprintf("%s\n... (%d more lines)", preview, remaining)
+func sortedRuleIDs(m map[string]*config.ActiveRule) []string {
+	out := make([]string, 0, len(m))
+	for id := range m {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }

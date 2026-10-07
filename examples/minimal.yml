@@ -1,0 +1,20 @@
+# Minimal.
+#
+# Four rules and nothing else. A good starting point when you want psx to point out
+# the important gaps without dictating your repository layout.
+#
+#   psx check --config examples/minimal.yml .
+version: 1
+
+project:
+  # Leave empty to detect from go.mod / package.json / Cargo.toml / pyproject.toml.
+  type: ""
+
+rules:
+  readme: error
+  license: warning
+  gitignore: warning
+  changelog: info
+
+fix:
+  interactive: true

@@ -1,0 +1,47 @@
+# A Rust binary.
+#
+#   psx init --type rust --kind cli
+version: 1
+
+project:
+  type: rust
+  kind: cli
+
+rules:
+  readme: error
+  license: error
+  package_manager: error
+  lockfile: error         # Cargo.lock: reproducible builds
+
+  makefile: info
+  src_folder: error
+  tests_folder: error
+
+  editorconfig: info
+  gitignore: warning
+  gitattributes: info
+
+  # rust builds are slow; caching matters
+  ci_config: error
+  workflow_ci: error
+  dependency_updates: warning
+  workflow_secret_scan: warning
+
+  # goreleaser handles the cross-compile and checksums
+  release_workflow: warning
+  workflow_release: warning
+
+  docs_folder: info
+  adr: info
+  security: warning
+  code_owners: info
+  pull_request_template: info
+  issue_templates: info
+
+fix:
+  interactive: true
+
+ignore:
+  - target/
+  - dist/
+  - coverage/

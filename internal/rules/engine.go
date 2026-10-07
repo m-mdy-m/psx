@@ -2,31 +2,42 @@ package rules
 
 import (
 	"fmt"
-	"sync"
+	"sort"
+	"strings"
 
 	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/logger"
+	"github.com/m-mdy-m/psx/internal/tree"
 )
 
 type Engine struct {
 	ctx    *Context
 	rules  map[string]*config.ActiveRule
 	checks *Checker
-	fixes  *Fixer
 }
 
-func NewEngine(cfg *config.Config, ctx *Context) *Engine {
+func NewEngine(cfg *config.Config, ctx *Context, snap *tree.Snapshot) *Engine {
 	return &Engine{
 		ctx:    ctx,
 		rules:  cfg.ActiveRules,
-		checks: NewChecker(ctx),
-		fixes:  NewFixer(ctx),
+		checks: NewChecker(snap),
 	}
 }
 
+// Execute scans the project once and evaluates every active rule.
 func Execute(cfg *config.Config, ctx *Context) (*ExecutionResult, error) {
-	engine := NewEngine(cfg, ctx)
-	return engine.Execute()
+	snap, err := tree.Scan(ctx.ProjectPath, cfg.Ignore)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan project: %w", err)
+	}
+	return ExecuteSnapshot(cfg, ctx, snap)
+}
+
+// ExecuteSnapshot evaluates every active rule against an existing snapshot.
+// Callers that already hold a snapshot (such as watch mode) reuse it instead of
+// walking the tree again.
+func ExecuteSnapshot(cfg *config.Config, ctx *Context, snap *tree.Snapshot) (*ExecutionResult, error) {
+	return NewEngine(cfg, ctx, snap).Execute()
 }
 
 func (e *Engine) Execute() (*ExecutionResult, error) {
@@ -34,109 +45,101 @@ func (e *Engine) Execute() (*ExecutionResult, error) {
 		return nil, fmt.Errorf("no active rules configured")
 	}
 
-	logger.Verbose(fmt.Sprintf("Executing %d rules...", len(e.rules)))
+	logger.Verbose(fmt.Sprintf("Executing %d rules", len(e.rules)))
 
-	// Prepare results slice
-	results := make([]RuleResult, 0, len(e.rules))
-	resultsChan := make(chan RuleResult, len(e.rules))
+	ids := make([]string, 0, len(e.rules))
+	for id := range e.rules {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
 
-	var wg sync.WaitGroup
-
-	// Execute rules in parallel
-	for ruleID, activeRule := range e.rules {
-		wg.Add(1)
-		go func(id string, rule *config.ActiveRule) {
-			defer wg.Done()
-			result := e.checkRule(id, rule)
-			resultsChan <- result
-		}(ruleID, activeRule)
+	results := make([]RuleResult, 0, len(ids))
+	for _, id := range ids {
+		results = append(results, e.checkRule(id, e.rules[id]))
 	}
 
-	// Wait for all rules to complete
-	go func() {
-		wg.Wait()
-		close(resultsChan)
-	}()
-
-	// Collect results
-	for result := range resultsChan {
-		results = append(results, result)
-	}
-
-	// Calculate summary
-	summary := e.calculateSummary(results)
-	status := e.determineStatus(summary)
-
+	summary := summarize(results)
 	return &ExecutionResult{
 		Context: e.ctx,
 		Results: results,
 		Summary: summary,
-		Status:  status,
+		Status:  outcome(summary),
 	}, nil
 }
 
-func (e *Engine) checkRule(ruleID string, activeRule *config.ActiveRule) RuleResult {
+// checkRule evaluates one rule. A rule whose patterns do not resolve for the
+// project type is reported as skipped, never as a pass.
+func (e *Engine) checkRule(ruleID string, rule *config.ActiveRule) RuleResult {
 	logger.Verbose(fmt.Sprintf("Checking: %s", ruleID))
 
-	patterns := config.GetPatterns(activeRule.Metadata.Patterns, e.ctx.ProjectType)
+	res := RuleResult{RuleID: ruleID, Severity: rule.Severity}
+
+	patterns := config.ResolvePatterns(rule.Metadata.Patterns, e.ctx.ProjectType)
 	if len(patterns) == 0 {
-		logger.Verbose(fmt.Sprintf("No patterns for %s in %s projects", ruleID, e.ctx.ProjectType))
-		return RuleResult{
-			RuleID:   ruleID,
-			Passed:   true,
-			Severity: activeRule.Severity,
-			Message:  "Not applicable for this project type",
-		}
-	}
-	passed := e.checks.CheckAny(patterns)
-
-	if passed {
-		return RuleResult{
-			RuleID:   ruleID,
-			Passed:   true,
-			Severity: activeRule.Severity,
-			Message:  "OK",
-		}
+		res.Status = StatusSkipped
+		res.Message = fmt.Sprintf("Not applicable to %s projects", e.ctx.ProjectType)
+		return res
 	}
 
-	// Failed
-	return RuleResult{
-		RuleID:   ruleID,
-		Passed:   false,
-		Severity: activeRule.Severity,
-		Message:  activeRule.Metadata.Message,
-		FixHint:  activeRule.Metadata.FixHint,
-		DocURL:   activeRule.Metadata.DocURL,
+	evidence, ok := e.checks.CheckAny(patterns)
+	if ok {
+		res.Status = StatusPassed
+		res.Message = "OK"
+		res.Evidence = evidence
+		return res
 	}
+
+	res.Status = StatusFailed
+	res.Message = rule.Metadata.Message
+	res.FixHint = rule.Metadata.FixHint
+	res.DocURL = rule.Metadata.DocURL
+	res.Evidence = strings.Join(patterns, ", ")
+	return res
 }
 
-func (e *Engine) calculateSummary(results []RuleResult) Summary {
-	summary := Summary{Total: len(results)}
+// Recount recomputes Summary and Status from Results. Anything that rewrites a
+// result must call this, or the counts and the verdict go stale.
+func Recount(res *ExecutionResult) {
+	res.Summary = summarize(res.Results)
+	res.Status = outcome(res.Summary)
+}
 
-	for _, result := range results {
-		if result.Passed {
-			summary.Passed++
-		} else {
-			switch result.Severity {
+// summarize counts results by status and by severity of the failures.
+func summarize(results []RuleResult) Summary {
+	s := Summary{Total: len(results)}
+	for _, r := range results {
+		switch r.Status {
+		case StatusPassed:
+			s.Passed++
+		case StatusSkipped:
+			s.Skipped++
+		case StatusFailed:
+			s.Failed++
+			switch r.Severity {
 			case config.SeverityError:
-				summary.Errors++
+				s.Errors++
 			case config.SeverityWarning:
-				summary.Warnings++
+				s.Warnings++
 			case config.SeverityInfo:
-				summary.Info++
+				s.Info++
 			}
 		}
 	}
-
-	return summary
+	return s
 }
 
-func (e *Engine) determineStatus(summary Summary) Status {
-	if summary.Errors > 0 {
-		return StatusFailed
+// outcome derives the run verdict, ignoring skipped rules.
+func outcome(s Summary) Outcome {
+	switch {
+	case s.Errors > 0:
+		return OutcomeFailed
+	case s.Warnings > 0:
+		return OutcomeWarnings
+	default:
+		return OutcomePassed
 	}
-	if summary.Warnings > 0 {
-		return StatusWarnings
-	}
-	return StatusPassed
 }
+
+func isDirPattern(p string) bool { return strings.HasSuffix(p, "/") }
+
+func hasGlobMeta(p string) bool { return strings.ContainsAny(p, "*?[") }

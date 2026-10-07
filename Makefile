@@ -7,33 +7,36 @@ BUILD_DIR := build
 CMD_DIR := ./cmd/psx
 
 # LDFLAGS
-LDFLAGS = -ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildDate=$(BUILD_DATE)"
+LDFLAGS = -ldflags "-s -w -X github.com/m-mdy-m/psx/internal/command.Version=$(VERSION)"
 
 # Colors
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 RED := \033[0;31m
-NC := \033[0m 
+NC := \033[0m
+
+.PHONY: all build dev clean install uninstall build-all release \
+        test test-unit test-race test-coverage lint fmt vet check \
+        docs tidy verify version docker docker-all help
 
 all: clean build
 
 build:
-	@echo "$(YELLOW)Building PSX $(VERSION)...$(NC)"
+	@echo "$(YELLOW)Building psx $(VERSION)...$(NC)"
 	@mkdir -p $(BUILD_DIR)
 	@go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)
-	@echo "$(GREEN)✓ Build complete: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
-	@echo "$(GREEN)✓ Version: $(VERSION)$(NC)"
+	@echo "$(GREEN)Build complete: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
 
 dev:
 	@echo "$(YELLOW)Building development version...$(NC)"
 	@mkdir -p $(BUILD_DIR)
 	@go build -race -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)
-	@echo "$(GREEN)✓ Dev build complete$(NC)"
+	@echo "$(GREEN)Dev build complete$(NC)"
 
 clean:
 	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BUILD_DIR)
-	@echo "$(GREEN)✓ Clean complete$(NC)"
+	@echo "$(GREEN)âœ“ Clean complete$(NC)"
 
 install: build
 	@echo "$(YELLOW)Installing PSX...$(NC)"
@@ -83,73 +86,95 @@ release:
 	@git commit -m "chore: release $(VERSION)"
 	@git tag -a $(VERSION) -m "Release $(VERSION)"
 	@echo ""
-	@echo "$(GREEN)✓ Release $(VERSION) created!$(NC)"
+	@echo "$(GREEN)âœ“ Release $(VERSION) created!$(NC)"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Review the changes"
 	@echo "  2. Push: git push origin main --tags"
 	@echo "  3. Create GitHub release with build/$(BINARY_NAME)-*.tar.gz"
 
-test: test-unit test-integration
+test:
+	@echo "Running tests..."
+	go test ./...
 
 test-unit:
 	@echo "Running unit tests..."
-	go test -v -short ./...
-
-test-integration:
-	@echo "Running integration tests..."
-	go test -v -run Integration ./...
+	go test -short ./...
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
+	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
 test-race:
 	@echo "Running tests with race detector..."
-	go test -v -race ./...
-lint: 
-	@echo "$(YELLOW)Running linter...$(RESET)"
-	@golangci-lint run
-	@echo "$(GREEN)✓ Lint passed$(RESET)
+	go test -race ./...
+
+vet:
+	@echo "$(YELLOW)Running go vet...$(NC)"
+	go vet ./...
+
+lint:
+	@echo "$(YELLOW)Running linter...$(NC)"
+	golangci-lint run
+	@echo "$(GREEN)Lint passed$(NC)"
+
+# check is what CI runs; keep it fast enough to run before every commit.
+check: fmt vet test
+	@echo "$(GREEN)All checks passed$(NC)"
+
+# Regenerate docs/RULES.md from rules.yml.
+docs:
+	@echo "$(YELLOW)Regenerating documentation...$(NC)"
+	go test ./internal/config/ -run TestGenerateRuleReference
+	@echo "$(GREEN)Docs regenerated$(NC)"
+
+tidy:
+	@echo "$(YELLOW)Tidying modules...$(NC)"
+	go mod tidy
+
+verify: tidy vet test
+	@if [ -n "$$(git diff --name-only go.mod go.sum)" ]; then \
+		echo "$(RED)go.mod or go.sum is out of date; run make tidy$(NC)"; exit 1; \
+	fi
+	@if [ -n "$$(gofmt -l . | grep -v '^build/')" ]; then \
+		echo "$(RED)Unformatted files:$(NC)"; gofmt -l . | grep -v '^build/'; exit 1; \
+	fi
+	@echo "$(GREEN)Verified$(NC)"
 
 fmt:
 	@echo "$(YELLOW)Formatting code...$(NC)"
 	@go fmt ./...
 	@gofmt -s -w .
-	@echo "$(GREEN)✓ Code formatted$(NC)"
+	@echo "$(GREEN)Code formatted$(NC)"
 
 check-deps:
 	@echo "$(YELLOW)Checking dependencies...$(NC)"
 	@go mod verify
-	@go mod tidy
-	@echo "$(GREEN)✓ Dependencies OK$(NC)"
+	@echo "$(GREEN)Dependencies verified$(NC)"
 
 version:
-	@echo "PSX Build Information"
-	@echo "====================="
-	@echo "Version:    $(VERSION)"
-	@echo "Build Date: $(BUILD_DATE)"
-	@echo "Go Version: $(shell go version)"
+	@echo "psx $(VERSION)"
+	@echo "go $(shell go version)"
 
 docker:
 	@echo "$(YELLOW)Building Docker image (standard)...$(NC)"
 	@docker buildx build  -t psx:latest -t psx:$(VERSION) -f Dockerfile .
-	@echo "$(GREEN)✓ Docker image built: psx:latest$(NC)"
+	@echo "$(GREEN)âœ“ Docker image built: psx:latest$(NC)"
 
 docker-alpine:
 	@echo "$(YELLOW)Building Docker image (Alpine)...$(NC)"
 	@docker buildx build  -t psx:alpine -t psx:$(VERSION)-alpine -f infra/Dockerfile.alpine .
-	@echo "$(GREEN)✓ Docker image built: psx:alpine$(NC)"
+	@echo "$(GREEN)âœ“ Docker image built: psx:alpine$(NC)"
 
 docker-scratch:
 	@echo "$(YELLOW)Building Docker image (Scratch)...$(NC)"
 	@docker buildx build  -t psx:scratch -t psx:$(VERSION)-scratch -f infra/Dockerfile.scratch .
-	@echo "$(GREEN)✓ Docker image built: psx:scratch$(NC)"
+	@echo "$(GREEN)âœ“ Docker image built: psx:scratch$(NC)"
 
 docker-all: docker docker-alpine docker-scratch
-	@echo "$(GREEN)✓ All Docker images built$(NC)"
+	@echo "$(GREEN)âœ“ All Docker images built$(NC)"
 
 docker-run:
 	@docker run --rm -v $(PWD):/project psx:latest check
@@ -167,41 +192,37 @@ docker-compose-up:
 	@docker-compose up psx
 
 help:
-	@echo "PSX Build System"
-	@echo "================"
+	@echo "psx build system"
 	@echo ""
-	@echo "Usage: make [target]"
+	@echo "Build:"
+	@echo "  build          Build for the current platform"
+	@echo "  dev            Build with the race detector"
+	@echo "  build-all      Cross-compile for every release platform"
+	@echo "  install        Install to the system"
+	@echo "  uninstall      Remove from the system"
+	@echo "  clean          Remove build artifacts"
 	@echo ""
-	@echo "Main targets:"
-	@echo "  build         - Build for current platform"
-	@echo "  dev           - Build development version (with race detector)"
-	@echo "  clean         - Remove build artifacts"
-	@echo "  install       - Install to system"
-	@echo "  uninstall     - Remove from system"
+	@echo "Check:"
+	@echo "  check          Format, vet and test (what CI runs)"
+	@echo "  test           Run tests"
+	@echo "  test-race      Run tests with the race detector"
+	@echo "  test-coverage  Run tests and write coverage.html"
+	@echo "  vet            Run go vet"
+	@echo "  lint           Run golangci-lint"
+	@echo "  fmt            Format the code"
+	@echo "  verify         Check modules are tidy and the tree is formatted"
 	@echo ""
-	@echo "Cross-platform:"
-	@echo "  build-all     - Build for all platforms"
-	@echo "  release       - Create a new release (requires VERSION)"
-	@echo ""
-	@echo "Testing:"
-	@echo "  test          - Run tests"
-	@echo "  test-coverage - Run tests with coverage report"
-	@echo "  lint          - Run linters"
-	@echo "  fmt           - Format code"
+	@echo "Docs:"
+	@echo "  docs           Regenerate docs/RULES.md from rules.yml"
 	@echo ""
 	@echo "Docker:"
-	@echo "  docker        - Build standard Docker image"
-	@echo "  docker-alpine - Build Alpine Docker image"
-	@echo "  docker-scratch- Build Scratch Docker image"
-	@echo "  docker-all    - Build all Docker images"
+	@echo "  docker         Build the standard image"
+	@echo "  docker-alpine  Build the Alpine image"
+	@echo "  docker-scratch Build the scratch image"
+	@echo "  docker-all     Build every image variant"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  check-deps    - Verify and tidy dependencies"
-	@echo "  version       - Show version information"
-	@echo "  help          - Show this help message"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make build              # Build binary"
-	@echo "  make test               # Run tests"
-	@echo "  make docker-all         # Build all Docker images"
-	@echo "  VERSION=v1.0.0 make release  # Create release"
+	@echo "Other:"
+	@echo "  tidy           Tidy go.mod"
+	@echo "  version        Show version information"
+	@echo "  release        Create a release (requires a clean main branch)"
+	@echo "  help           Show this help"

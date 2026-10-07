@@ -56,3 +56,36 @@ go: |
   build/
   bin/
   dist/
+# Environment variable template
+env_example:
+  generic: |
+    # Copy to .env and fill in real values. Never commit .env itself.
+    APP_ENV=development
+    APP_PORT=8080
+    LOG_LEVEL=info
+
+  nodejs: |
+    # Copy to .env and fill in real values. Never commit .env itself.
+    NODE_ENV=development
+    PORT=3000
+    LOG_LEVEL=debug
+
+    # Database
+    DATABASE_URL=postgres://user:password@localhost:5432/{{repo_name}}
+
+    # Optional integrations
+    # REDIS_URL=redis://localhost:6379
+    # OPENAI_API_KEY=
+
+  go: |
+    # Copy to .env and fill in real values. Never commit .env itself.
+    APP_ENV=development
+    APP_PORT=8080
+    LOG_LEVEL=info
+
+    # Database
+    DATABASE_URL=postgres://user:password@localhost:5432/{{repo_name}}?sslmode=disable
+
+    # Optional integrations
+    # REDIS_ADDR=localhost:6379
+    # SECRET_KEY=

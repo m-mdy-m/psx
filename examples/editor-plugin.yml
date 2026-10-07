@@ -1,0 +1,87 @@
+# An editor or plugin host.
+#
+# The plugin boundary is the thing that rots: a host that imports from a plugin, or a
+# plugin that reaches into the host, cannot be versioned independently. The `custom`
+# block below enforces the shape.
+#
+#   psx init --type nodejs --kind plugin
+version: 1
+
+project:
+  type: nodejs
+  kind: plugin
+
+rules:
+  readme: error            # documents the extension point
+  license: warning
+  package_manager: error
+  lockfile: warning
+  gitignore: warning
+  gitattributes: info
+
+  src_folder: error
+  tests_folder: error
+
+  # The interface is the product
+  architecture: error
+  api_docs: error
+  adr: error               # why the boundary sits where it does
+
+  # Trust boundary: plugins load third-party code
+  security: error
+  workflow_secret_scan: error
+  workflow_codeql: warning
+  dependency_updates: error
+
+  ci_config: error
+  workflow_ci: error
+  editorconfig: info
+  pre_commit: info
+  code_owners: error
+  pull_request_template: info
+  issue_templates: info
+  docs_folder: info
+
+fix:
+  interactive: true
+
+ignore:
+  - node_modules/
+  - dist/
+  - out/
+  - coverage/
+
+custom:
+  files:
+    # Every plugin needs a manifest, and the host needs a typed view of them.
+    - path: plugins/README.md
+      content: |
+        # Plugins
+
+        Each subdirectory is one plugin with a `plugin.json`:
+
+        ```json
+        {
+          "id": "example",
+          "name": "Example",
+          "version": "1.0.0",
+          "engines": { "host": "^3.0.0" }
+        }
+        ```
+
+        ## Rules
+
+        - `id` matches the directory name.
+        - `version` is semver.
+        - `engines.host` is a range the host satisfies.
+
+        The host reads this directory at startup; nothing here is bundled.
+
+  folders:
+    - path: plugins
+      structure:
+        example:
+          plugin.json: ""
+          README.md: ""
+          src/:
+            index.ts: ""

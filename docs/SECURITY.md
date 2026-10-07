@@ -1,60 +1,77 @@
 # Security Policy
 
-## supported versions
+## Supported versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x     | :white_check_mark: |
-| 0.x     | :x:                |
+| Version | Supported |
+| --- | --- |
+| 3.x | Yes |
+| 2.x | Security fixes only |
+| < 2.0 | No |
 
-basically just use the latest version.
+Use the latest release.
 
-## reporting a vulnerability
+## Reporting a vulnerability
 
-found a security issue? please don't open a public issue.
+Please do not open a public issue for a security problem.
 
-email me instead: bitsgenix@gmail.com
+Email **bitsgenix@gmail.com** with "PSX Security" in the subject.
 
-put "PSX SECURITY" in the subject so i don't miss it.
+Include:
 
-### what to include
-
-- description of the issue
+- what the issue is and what an attacker gains
 - steps to reproduce
-- affected versions
-- possible fix if you have one
+- affected version and platform
+- a suggested fix, if you have one
 
-### what happens next
+You will get an acknowledgement within 48 hours. If it is confirmed, a fix and a patch
+release follow, and you are credited unless you prefer otherwise.
 
-i'll try to respond within 48 hours (might be longer on weekends).
+If it turns out not to be a security issue, you will be told why and the conversation may
+move to a normal issue.
 
-if it's legit:
-1. i'll confirm it
-2. fix it
-3. release a patch
-4. credit you if you want
+## What psx does with your project
 
-if it's not really a security issue, i'll let you know and maybe open a regular issue for it.
+psx reads your project and, when you run `fix`, writes into it. It makes no network
+requests.
 
-## security best practices
+- `check`, `detect`, `rules`, `explain` and `workflows` never write to your project.
+- `fix` writes only inside the project directory. Paths are resolved against the project
+  root and rejected if they escape it, including through symlinks. A `psx.yml` from a
+  cloned repository therefore cannot make `psx fix --yes` write elsewhere on disk.
+- An existing file with content is never overwritten unless you pass `--force`.
+- Nothing is deleted.
 
-for users:
-- always use the latest version
-- don't run psx with sudo unless you have to
-- check checksums when downloading binaries
+The trade-off: `fix` writes files into your working tree without a backup unless you set
+`fix.backup: true` in `psx.yml`. Commit or stash first, or use `--dry-run`.
 
-for contributors:
-- don't commit secrets or keys
-- use `go mod` for dependencies
-- run security scanners if you can
+## Verifying a download
 
-## known issues
+Release builds publish `checksums.txt`. Verify before running an installer:
 
-none right now (hopefully)
-
-if there are any, they'll be listed here with workarounds.
-
----
-
-thanks for helping keep psx secure 🔒
+```bash
+sha256sum -c checksums.txt
 ```
+
+`scripts/install.sh` does this for you.
+
+## Hardening your own repository
+
+psx can set up the checks that catch the common cases:
+
+```bash
+psx fix --rule workflow_secret_scan          # gitleaks on push and PR
+psx fix --rule workflow_codeql               # CodeQL analysis
+psx fix --rule workflow_dependency_updates   # Dependabot
+psx fix --rule env_example                   # .env.example, so .env stays untracked
+```
+
+These are conveniences, not a security boundary. `psx` does not replace `gitleaks`,
+`trivy`, or a dependency audit.
+
+## For contributors
+
+- Never commit a secret. `.gitattributes` and `.gitignore` templates mark common binary and
+  lockfile paths, but a secret is your responsibility.
+- Dependencies are pinned in `go.sum`. Run `make tidy` and commit the result.
+- `make verify` checks the module graph is tidy and the tree is formatted.
+- Report a vulnerable dependency through the Dependabot alert, or by email as above.

@@ -140,3 +140,151 @@ pre_commit:
         rev: v1.55.2
         hooks:
           - id: golangci-lint
+
+# Line endings and merge conflict normalisation
+gitattributes: |
+  # Normalise line endings on checkin; keep binaries intact.
+  * text=auto eol=lf
+
+  *.bat text eol=crlf
+  *.cmd text eol=crlf
+  *.ps1 text eol=crlf
+
+  # Binary assets must never be diffed or line-ending converted.
+  *.png binary
+  *.jpg binary
+  *.jpeg binary
+  *.gif binary
+  *.ico binary
+  *.pdf binary
+  *.zip binary
+  *.gz binary
+  *.tar binary
+  *.woff binary
+  *.woff2 binary
+  *.ttf binary
+  *.eot binary
+
+  # Lockfiles are generated; keep diffs minimal.
+  package-lock.json -diff
+  pnpm-lock.yaml -diff
+  yarn.lock -diff
+  go.sum -diff
+
+# Task runner
+makefile:
+  generic: |
+    # {{project_name}} — {{project_desc}}
+    #
+    # Common entry points. Run `make help` to list targets.
+
+    SHELL := bash
+    .DEFAULT_GOAL := help
+
+    .PHONY: help setup build test lint fmt clean docker-build
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+    		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+    setup: ## Install dependencies
+    	@echo "Setting up {{project_name}}..."
+
+    build: ## Build the project
+    	@echo "Building {{project_name}}..."
+
+    test: ## Run tests
+    	@echo "Running tests..."
+
+    lint: ## Run linters
+    	@echo "Linting..."
+
+    fmt: ## Format the code
+    	@echo "Formatting..."
+
+    clean: ## Remove build artifacts
+    	@echo "Cleaning..."
+
+    docker-build: ## Build the container image
+    	@echo "Building {{docker_image}}..."
+
+  nodejs: |
+    # {{project_name}} — {{project_desc}}
+
+    SHELL := bash
+    .DEFAULT_GOAL := help
+
+    .PHONY: help setup build test lint fmt clean docker-build
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+    		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+    setup: ## Install dependencies
+    	npm install
+
+    build: ## Build the project
+    	npm run build
+
+    test: ## Run tests
+    	npm test
+
+    lint: ## Run linters
+    	npm run lint
+
+    fmt: ## Format the code
+    	npm run format
+
+    clean: ## Remove build artifacts
+    	rm -rf node_modules dist coverage
+
+    docker-build: ## Build the container image
+    	docker build -t {{docker_image}}:latest .
+
+  go: |
+    # {{project_name}} — {{project_desc}}
+
+    SHELL := bash
+    .DEFAULT_GOAL := help
+
+    BIN_DIR := bin
+    PKG := ./...
+
+    .PHONY: help setup build test lint fmt clean docker-build tidy verify
+
+    help: ## Show this help
+    	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+    		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+    setup: ## Install dependencies and tools
+    	go mod download
+    	@echo "Installing dev tools..."
+    	go install golang.org/x/tools/cmd/goimports@latest
+    	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
+    build: ## Build all packages
+    	mkdir -p $(BIN_DIR)
+    	go build -o $(BIN_DIR)/{{project_name}} ./cmd/{{project_name}}
+
+    test: ## Run tests with race detector
+    	go test -race -coverprofile=coverage.out $(PKG)
+
+    tidy: ## Tidy go.mod
+    	go mod tidy
+
+    verify: ## Vet, format check and lint
+    	go vet $(PKG)
+    	@test -z "$$(gofmt -l . )" || (echo "gofmt needed:"; gofmt -l .; exit 1)
+    	golangci-lint run
+
+    lint: ## Run golangci-lint
+    	golangci-lint run
+
+    fmt: ## Format the code
+    	go fmt $(PKG)
+
+    clean: ## Remove build artifacts
+    	rm -rf $(BIN_DIR) coverage.out
+
+    docker-build: ## Build the container image
+    	docker build -t {{docker_image}}:latest .

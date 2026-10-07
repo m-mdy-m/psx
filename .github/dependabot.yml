@@ -1,0 +1,26 @@
+version: 2
+
+updates:
+  # Dependabot reads the ecosystems present in the repository; adjust this list
+  # to match what the project actually uses.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # Minor and patch updates together, so routine work lands as one PR.
+      go-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

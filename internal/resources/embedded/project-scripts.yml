@@ -1,0 +1,51 @@
+# Script: setup
+script_setup: |
+  #!/usr/bin/env bash
+  # Prepare {{project_name}} for local development.
+  set -euo pipefail
+
+  echo "==> Setting up {{project_name}}"
+  cd "$(dirname "$0")/.."
+
+  {{install_command}}
+
+  if [ -f .env.example ] && [ ! -f .env ]; then
+    cp .env.example .env
+    echo "==> Created .env from .env.example (review it before running)"
+  fi
+
+  echo "==> Setup complete"
+
+# Script: test
+script_test: |
+  #!/usr/bin/env bash
+  # Run the test suite.
+  set -euo pipefail
+
+  cd "$(dirname "$0")/.."
+
+  echo "==> Running tests"
+  {{test_command}}
+
+# Script: build
+script_build: |
+  #!/usr/bin/env bash
+  # Build the project.
+  set -euo pipefail
+
+  cd "$(dirname "$0")/.."
+
+  echo "==> Building {{project_name}}"
+  rm -rf {{build_dir}}
+  {{build_command}}
+
+# Script: clean
+script_clean: |
+  #!/usr/bin/env bash
+  # Remove build output and caches.
+  set -euo pipefail
+
+  cd "$(dirname "$0")/.."
+
+  echo "==> Cleaning"
+  rm -rf {{build_dirs}} {{cache_dirs}}

@@ -497,4 +497,457 @@ cicd:
           - echo "Add your deployment steps here"
         only:
           - main
-        when: manual
+        when: manual# Dependency Updates (Dependabot)
+
+dependabot:
+  generic: |
+    version: 2
+    updates:
+      # Dependabot reads the ecosystems present in the repo; adjust the list to
+      # match what this project actually uses.
+      - package-ecosystem: "github-actions"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+        groups:
+          actions:
+            patterns: ["*"]
+
+  nodejs: |
+    version: 2
+    updates:
+      - package-ecosystem: "npm"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+        groups:
+          prod:
+            dependency-type: "production"
+            update-types: ["minor", "patch"]
+          dev:
+            dependency-type: "development"
+      - package-ecosystem: "github-actions"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+      - package-ecosystem: "docker"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+
+  go: |
+    version: 2
+    updates:
+      - package-ecosystem: "gomod"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+        groups:
+          go-minor-patch:
+            update-types: ["minor", "patch"]
+      - package-ecosystem: "github-actions"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+      - package-ecosystem: "docker"
+        directory: "/"
+        schedule:
+          interval: "weekly"
+
+# Renovate, as an alternative to Dependabot
+renovate:
+  generic: |
+    {
+      "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+      "extends": ["config:recommended", ":semanticCommits"],
+      "schedule": ["before 5am on monday"]
+    }
+
+  nodejs: |
+    {
+      "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+      "extends": ["config:recommended", ":semanticCommits", ":groupPatchableNonMajor"],
+      "npm": { "enabled": true },
+      "schedule": ["before 5am on monday"]
+    }
+
+  go: |
+    {
+      "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+      "extends": ["config:recommended", ":semanticCommits"],
+      "enabledManagers": ["gomod", "github-actions", "dockerfile"],
+      "schedule": ["before 5am on monday"]
+    }
+
+# Node runtime pinning
+node_version:
+  nodejs: |
+    22
+
+# Release pipeline (tag-triggered)
+release_workflow:
+  generic: |
+    name: Release
+
+    on:
+      push:
+        tags: ["v*"]
+
+    permissions:
+      contents: write
+
+    jobs:
+      release:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+
+          - uses: actions/setup-go@v5
+            with:
+              go-version: stable
+
+          - name: Run tests
+            run: go test -race ./...
+
+          - name: Build binaries
+            run: go build -trimpath -ldflags "-s -w" -o dist/{{project_name}} ./cmd/{{project_name}}
+
+          - name: Create release
+            uses: softprops/action-gh-release@v2
+            with:
+              generate_release_notes: true
+              files: dist/*
+
+  nodejs: |
+    name: Release
+
+    on:
+      push:
+        tags: ["v*"]
+
+    permissions:
+      contents: write
+      id-token: write
+
+    jobs:
+      release:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+
+          - uses: actions/setup-node@v4
+            with:
+              node-version: 22
+              registry-url: https://registry.npmjs.org
+
+          - run: npm ci
+          - run: npm test
+
+          - name: Publish to npm
+            run: npm publish --provenance
+            env:
+              NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  go: |
+    name: Release
+
+    on:
+      push:
+        tags: ["v*"]
+
+    permissions:
+      contents: write
+
+    jobs:
+      release:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+
+          - uses: actions/setup-go@v5
+            with:
+              go-version: stable
+
+          - name: Verify
+            run: |
+              go vet ./...
+              go test -race -coverprofile=coverage.out ./...
+
+          - name: Build matrix
+            run: |
+              mkdir -p dist
+              for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+                os="${target%/*}"; arch="${target#*/}"
+                ext=""
+                [ "$os" = "windows" ] && ext=".exe"
+                CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+                  go build -trimpath -ldflags "-s -w" \
+                  -o "dist/{{project_name}}_${os}_${arch}${ext}" ./cmd/{{project_name}}
+              done
+
+          - name: Checksums
+            run: cd dist && sha256sum * > checksums.txt
+
+          - name: Create release
+            uses: softprops/action-gh-release@v2
+            with:
+              generate_release_notes: true
+              files: dist/*
+
+# Reverse proxy configuration
+nginx:
+  generic: |
+    # {{project_name}} reverse proxy
+    server {
+        listen 80;
+        server_name {{domain}};
+
+        # Redirect to HTTPS in production; adjust or remove for local use.
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443 ssl http2;
+        server_name {{domain}};
+
+        ssl_certificate     /etc/letsencrypt/live/{{domain}}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/{{domain}}/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+
+        client_max_body_size 10m;
+
+        location / {
+            proxy_pass http://app:8080;
+            proxy_http_version 1.1;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /health {
+            proxy_pass http://app:8080/health;
+            access_log off;
+        }
+
+        # Static assets can be cached aggressively.
+        location ~* \.(js|css|woff2|png|jpg|svg)$ {
+            proxy_pass http://app:8080;
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+  nodejs: |
+    # {{project_name}} reverse proxy (Node.js)
+    server {
+        listen 80;
+        server_name {{domain}};
+
+        location / {
+            proxy_pass http://app:3000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade    $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host       $host;
+            proxy_set_header X-Real-IP  $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+
+# Kubernetes manifests
+kubernetes:
+  generic: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: {{project_name}}
+      labels:
+        app.kubernetes.io/name: {{project_name}}
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: {{project_name}}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{project_name}}
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+          containers:
+            - name: {{project_name}}
+              image: {{docker_image}}:latest
+              ports:
+                - name: http
+                  containerPort: 8080
+              envFrom:
+                - secretRef:
+                    name: {{project_name}}-secrets
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 10
+                periodSeconds: 15
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: {{project_name}}
+    spec:
+      selector:
+        app.kubernetes.io/name: {{project_name}}
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
+
+  nodejs: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: {{project_name}}
+      labels:
+        app.kubernetes.io/name: {{project_name}}
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: {{project_name}}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{project_name}}
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+          containers:
+            - name: {{project_name}}
+              image: {{docker_image}}:latest
+              ports:
+                - name: http
+                  containerPort: 3000
+              envFrom:
+                - secretRef:
+                    name: {{project_name}}-secrets
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 10
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: http
+                initialDelaySeconds: 5
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: {{project_name}}
+    spec:
+      selector:
+        app.kubernetes.io/name: {{project_name}}
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
+
+# Helm chart scaffold
+helm_chart:
+  generic: |
+    apiVersion: v2
+    name: {{repo_name}}
+    description: {{project_desc}}
+    type: application
+    version: 0.1.0
+    appVersion: "0.1.0"
+
+    values: |
+      replicaCount: 2
+
+      image:
+        repository: {{docker_image}}
+        pullPolicy: IfNotPresent
+        tag: ""
+
+      service:
+        type: ClusterIP
+        port: 80
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  nodejs: |
+    apiVersion: v2
+    name: {{repo_name}}
+    description: {{project_desc}}
+    type: application
+    version: 0.1.0
+    appVersion: "0.1.0"
+
+    values: |
+      replicaCount: 2
+
+      image:
+        repository: {{docker_image}}
+        pullPolicy: IfNotPresent
+        tag: ""
+
+      service:
+        type: ClusterIP
+        port: 80
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

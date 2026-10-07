@@ -1,0 +1,43 @@
+# Tuned for CI.
+#
+# `psx check` writes only the report to stdout; every diagnostic goes to stderr, so
+# this is safe to pipe.
+#
+#   psx check --config examples/ci-output.yml -o github        # inline annotations
+#   psx check --config examples/ci-output.yml -o json | jq .summary
+#   psx check --config examples/ci-output.yml -o sarif > results.sarif
+#
+# Only error-severity rules are listed. An allow-list keeps the signal high: every
+# finding here is a real failure, so a red build always means something.
+version: 1
+
+project:
+  type: ""
+
+rules:
+  # Broken builds
+  readme: error
+  package_manager: error
+  tests_folder: error
+  lockfile: error
+
+  # Leaks and supply chain
+  gitignore: error
+  env_example: error
+  dependency_updates: error
+
+  # The build must run somewhere
+  ci_config: error
+
+fix:
+  # CI has no terminal, so prompts return defaults rather than blocking.
+  interactive: false
+  backup: false
+
+ignore:
+  - node_modules/
+  - vendor/
+  - target/
+  - dist/
+  - build/
+  - coverage/

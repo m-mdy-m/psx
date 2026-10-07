@@ -1,0 +1,63 @@
+# Every `ignore` form, with the syntax that produces each behaviour.
+#
+# Ignore patterns use gitignore syntax and are applied during the scan: a matching
+# directory is pruned, so node_modules is never walked rather than filtered afterwards.
+#
+# Not ignored: matches must be inside the project.
+#   path: ../../.bashrc   -> rejected
+#   path: /etc/passwd     -> rejected
+version: 1
+
+project:
+  type: ""
+
+rules:
+  # src_folder and tests_folder match by glob, so an unignored vendored tree
+  # would otherwise satisfy them.
+  src_folder: error
+  tests_folder: error
+  docs_folder: info
+
+  # With everything below ignored, this only passes if real tests exist.
+  readme: error
+
+fix:
+  interactive: true
+
+ignore:
+  # A bare name matches at any depth: any directory called dist.
+  - dist/
+  - build/
+  - coverage/
+
+  # Anchored with a leading slash: only at the project root.
+  - /tmp
+  - /artifacts
+
+  # Glob. Quoted so YAML keeps the asterisks.
+  - "*.log"
+  - "*.tmp"
+  - "**/*.snap"
+  - "**/*.log"
+
+  # Anything under a prefix.
+  - "src/generated/**"
+
+  # Contents of a directory, but keep one file inside it.
+  - "logs/*"
+  - "!logs/keep.txt"
+
+  # Tooling and VCS internals.
+  - .git/
+  - .github/cache/
+  - node_modules/
+  - vendor/
+  - .venv/
+  - __pycache__/
+  - target/
+  - .next/
+  - .turbo/
+
+  # psx's own files, so check does not report on its own scaffolding.
+  - .psx/
+  - .psx-project.yml

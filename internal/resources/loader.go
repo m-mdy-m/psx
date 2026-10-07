@@ -5,6 +5,7 @@ package resources
 import (
 	"embed"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -16,15 +17,17 @@ import (
 var embeddedFS embed.FS
 
 var (
-	templates     *TemplatesConfig
-	gitignores    *GitignoresConfig
-	licenses      *LicensesConfig
-	qualityTools  *QualityToolsConfig
-	devops        *DevOpsConfig
-	docsTemplates *DocsTemplatesConfig
-	messages      *MessagesConfig
-	languages     *LanguagesConfig
-	scripts       *ScriptsConfig
+	templates      *TemplatesConfig
+	gitignores     *GitignoresConfig
+	licenses       *LicensesConfig
+	qualityTools   *QualityToolsConfig
+	devops         *DevOpsConfig
+	docsTemplates  *DocsTemplatesConfig
+	messages       *MessagesConfig
+	languages      *LanguagesConfig
+	scripts        *ScriptsConfig
+	projectScripts *ProjectScriptsConfig
+	actions        *GitHubActionsConfig
 )
 
 func init() {
@@ -75,6 +78,16 @@ func init() {
 		logger.Fatalf("Failed to load scripts: %v", err)
 	}
 
+	actions, err = utils.LoadEmbedded[GitHubActionsConfig]("github-actions", "embedded/github-actions.yml", embeddedFS)
+	if err != nil {
+		logger.Fatalf("Failed to load github-actions: %v", err)
+	}
+
+	projectScripts, err = utils.LoadEmbedded[ProjectScriptsConfig]("project-scripts", "embedded/project-scripts.yml", embeddedFS)
+	if err != nil {
+		logger.Fatalf("Failed to load project scripts: %v", err)
+	}
+
 	logger.Verbose("All resources loaded successfully")
 }
 
@@ -105,42 +118,27 @@ func NormalizeProjectType(projectType string) string {
 	return projectType
 }
 
-func FormatMessage(category, key string, args ...any) string {
-	msg := GetMessage(category, key)
-	if msg == "" {
-		return ""
-	}
-	return fmt.Sprintf(msg, args...)
-}
-
-func getTemplate(templates map[string]string, projectType string) string {
-	if t, ok := templates[projectType]; ok && t != "" {
+// getTemplate picks the project-type tier, falling back to generic.
+//
+// The iteration order over a map is random, so keys are sorted before the last
+// resort: template selection must be reproducible across runs.
+func getTemplate(table map[string]string, projectType string) string {
+	if t, ok := table[projectType]; ok && t != "" {
 		return t
 	}
-
-	if t, ok := templates["generic"]; ok && t != "" {
+	if t, ok := table["generic"]; ok && t != "" {
 		return t
 	}
-
-	for _, t := range templates {
-		if t != "" {
+	keys := make([]string, 0, len(table))
+	for k := range table {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if t := table[k]; t != "" {
 			return t
 		}
 	}
-
-	return ""
-}
-
-func getScriptTemplate(scripts ScriptPlatformConfig, projectType string) string {
-	if s, ok := scripts["unix"]; ok && s != "" {
-		return s
-	}
-	for _, s := range scripts {
-		if s != "" {
-			return s
-		}
-	}
-
 	return ""
 }
 

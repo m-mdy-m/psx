@@ -2,15 +2,16 @@ name: Release
 
 on:
   push:
-    branches: [main, develop]
     tags:
       - 'v*.*.*'
-  pull_request:
-    branches: [main,develop]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
-  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Job 1: Build binaries for all platforms
@@ -76,12 +77,14 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: |
           OUT=psx-${{ matrix.target }}${{ matrix.ext }}
-          # try building from ./cmd/psx if exists, otherwise build from repo root
-          if [ -d "cmd/psx" ]; then
-            go build -trimpath -ldflags "-s -w -X 'main.version=${{ github.ref_name }}'" -o "build/$OUT" ./cmd/psx || go build -trimpath -o "build/$OUT" ./cmd/psx
-          else
-            go build -trimpath -ldflags "-s -w -X 'main.version=${{ github.ref_name }}'" -o "build/$OUT" ./ || go build -trimpath -o "build/$OUT" ./
-          fi
+          mkdir -p build
+          # Version lives in internal/command, not main; the old path silently
+          # produced a binary that always reported "development".
+          # No `|| go build` fallback: it would hide a real compile error behind
+          # a binary built without -s -w and without the version.
+          go build -trimpath \
+            -ldflags "-s -w -X github.com/m-mdy-m/psx/internal/command.Version=${VERSION}" \
+            -o "build/$OUT" ./cmd/psx
         shell: bash
       - name: Create checksum (Unix)
         if: runner.os != 'Windows'
@@ -133,6 +136,9 @@ jobs:
   create-release:
     name: Create Release
     needs: build-binaries
+    # always() so a partial failure still uploads the artifacts that succeeded,
+    # rather than discarding a working build.
+    if: always() && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -188,11 +194,19 @@ jobs:
   publish-docker:
     name: Publish Docker Image
     needs: create-release
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    # Only this job needs registry access; the top-level grant is minimal.
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # `git describe` supplies the version during the image build.
+          fetch-depth: 0
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

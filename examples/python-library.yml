@@ -1,0 +1,58 @@
+# A Python package published to PyPI.
+#
+#   psx init --type python --kind library
+version: 1
+
+project:
+  type: python
+  kind: library
+
+rules:
+  readme: error            # PyPI renders this as the package page
+  license: error
+  package_manager: error
+  lockfile: warning        # uv.lock / poetry.lock / requirements.txt
+
+  # API surface and version history
+  api_docs: info
+  changelog: error
+  contributing: info
+
+  tests_folder: error
+  src_folder: info
+  editorconfig: info
+  gitignore: warning
+  gitattributes: info
+
+  ci_config: error
+  workflow_ci: error
+  dependency_updates: warning
+  workflow_secret_scan: warning
+  workflow_codeql: warning
+
+  # PyPI credentials and publish provenance
+  release_workflow: warning
+  workflow_release: info
+
+  docs_folder: info
+  adr: info
+  security: warning
+  code_owners: info
+  pull_request_template: info
+  issue_templates: info
+
+fix:
+  interactive: true
+
+ignore:
+  # Compiled and virtualenv artefacts
+  - __pycache__/
+  - "*.py[cod]"
+  - .venv/
+  - .pytest_cache/
+  - .mypy_cache/
+  - .ruff_cache/
+  - "*.egg-info/"
+  - dist/
+  - build/
+  - coverage/

@@ -44,83 +44,16 @@ init:
   created: "Configuration created successfully"
 
 verbose:
-  detected: "Detected: %s"
-  rules_loaded: "Loaded %d rules"
-  config_loaded: "Config loaded: %s"
+  detected: "Detected %s (kind %s, confidence %.0f%%)"
+  config_loaded: "Loaded configuration from %s"
   checking: "Checking rule: %s"
   fixing: "Fixing rule: %s"
   created_file: "Created file: %s"
   created_folder: "Created folder: %s"
-help:
-  main: |
-    PSX - Project Structure Checker
-    
-    Validate and fix project structure automatically
-    
-    USAGE:
-      psx <command> [flags]
-    
-    COMMANDS:
-      check       Validate project structure
-      fix         Fix structural issues automatically
-      project     Manage project information cache
-      
-    GLOBAL FLAGS:
-      --config <file>   Use specific config file
-      --verbose, -v     Show detailed output
-      --quiet, -q       Minimal output
-      --no-color        Disable colored output
-      --help, -h        Show help
-      --version         Show version
-    
-    EXAMPLES:
-      psx check                    # Validate current directory
-      psx check --verbose          # Detailed validation
-      psx check --output json      # JSON output for CI/CD
-      psx fix                      # Fix issues interactively
-      psx fix --dry-run            # Preview fixes
-      psx fix --rule readme        # Fix specific rule
-      psx project show             # Show cached project info
-    
-    DOCUMENTATION:
-      https://github.com/m-mdy-m/psx
-    
-    SUPPORT:
-      Issues: https://github.com/m-mdy-m/psx/issues
-      Email:  bitsgenix@gmail.com
-
-  check: |
-    Validate project structure against configured rules
-    
-    USAGE:
-      psx check [path] [flags]
-    
-    FLAGS:
-      -o, --output string     Output format: table | json (default "table")
-          --level string      Filter by severity: error | warning | info | all (default "all")
-          --fail-on string    Exit with error on: error | warning (default "error")
-    
-    EXAMPLES:
-      psx check                    # Check current directory
-      psx check ./my-project       # Check specific directory
-      psx check --verbose          # Show detailed information
-      psx check --output json      # JSON output for CI/CD
-
-  fix: |
-    Automatically fix common structural issues
-    
-    USAGE:
-      psx fix [path] [flags]
-    
-    FLAGS:
-      -i, --interactive         Ask before each fix (default true)
-          --dry-run             Preview changes without applying
-          --rule string         Fix specific rule only
-          --all                 Fix all without prompting
-          --create-backups      Create backups before modifying
-    
-    EXAMPLES:
-      psx fix                      # Interactive mode
-      psx fix --dry-run            # Preview changes
-      psx fix --rule readme        # Fix only README
-      psx fix --all                # Fix all without prompts
+detect:
+  type: "Type: %s"
+  kind: "Kind: %s"
+  confidence: "Confidence: %.0f%%"
+  signals: "Signals: %s"
+  workspace: "Workspace: %s"
+  no_package_manifest: "No dependency manifest found; assuming generic"

@@ -1,54 +1,55 @@
-# PSX Installation Guide
+# Installation
 
-This guide covers all methods for installing PSX on your system.
+One static binary, no runtime dependencies. Pick whichever route suits you.
 
-## Table of Contents
-
-- [Quick Install](#quick-install)
-- [Download Binary](#download-binary)
-- [Build from Source](#build-from-source)
+- [Quick install](#quick-install)
+- [Download a binary](#download-a-binary)
+- [Build from source](#build-from-source)
 - [Docker](#docker)
-- [Uninstallation](#uninstallation)
+- [Uninstall](#uninstall)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Quick Install
+## Quick install
 
 ### Linux / macOS
 
-**One-line installation:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash
 ```
 
-**Install specific version:**
+A specific version:
+
 ```bash
-curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash -s github v1.0.0
+curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash -s github v3.0.0
 ```
 
-**What it does:**
-- Detects your platform (Linux/macOS, amd64/arm64)
-- Downloads the appropriate binary from GitHub releases
-- Installs to `/usr/local/bin` (system) or `~/.local/bin` (user)
-- Adds to PATH automatically
+The script detects your platform, downloads the matching binary, verifies it against the
+release `checksums.txt`, installs to `/usr/local/bin` or `~/.local/bin`, and updates PATH.
 
 ### Windows
 
-**PowerShell (Run as Administrator for system-wide install):**
 ```powershell
 irm https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1 | iex
 ```
 
-**Or download and run:**
+Or download and run:
+
 ```powershell
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1" -OutFile install.ps1
-.\install.ps1 github
+.\install.ps1
 ```
 
-**What it does:**
-- Downloads binary for Windows amd64
-- Installs to `C:\Program Files\PSX` (Admin) or `%LOCALAPPDATA%\PSX` (User)
-- Adds to PATH automatically
+Installs to `%LOCALAPPDATA%\psx` (user) or `C:\Program Files\psx` (administrator) and
+updates PATH. Restart your shell afterwards.
+
+### Verify
+
+```bash
+psx --version
+psx check
+```
 
 ---
 
@@ -174,47 +175,52 @@ make dev
 
 ## Docker
 
-PSX is available as a Docker image with multiple variants.
-
-### Standard Image
+Images are published on Docker Hub as `bitsgenix/psx`.
 
 ```bash
-# Pull image
 docker pull bitsgenix/psx:latest
 
-# Run in current directory
-docker run --rm -v $(pwd):/project bitsgenix/psx:latest check
+# Check the current directory
+docker run --rm -v "$(pwd):/project" -w /project bitsgenix/psx:latest check
 
-# Fix mode
-docker run --rm -v $(pwd):/project bitsgenix/psx:latest fix --dry-run
+# Preview a fix
+docker run --rm -v "$(pwd):/project" -w /project bitsgenix/psx:latest fix --dry-run
+
+# Apply a fix (writes into the mounted directory)
+docker run --rm -v "$(pwd):/project" -w /project bitsgenix/psx:latest fix --yes
 ```
 
-### Available Tags
+`check` needs no write access. `fix` does, so only mount read-only when you are checking.
 
-- `latest` - Latest stable release
-- `v1.0.0` - Specific version
-- `alpine` - Alpine-based (smaller)
+### Tags
 
-### Using Docker Compose
+| Tag | Image | Size |
+| --- | --- | --- |
+| `latest` | Debian | ~20 MB |
+| `alpine` | Alpine | ~17 MB |
+| `scratch` | No libc | ~5 MB |
 
-Create `docker-compose.yml`:
+The scratch image has no shell. Only the entrypoint works; do not run `sh` inside it.
+
+### Compose
 
 ```yaml
-version: '3.8'
-
 services:
   psx:
     image: bitsgenix/psx:latest
+    read_only: true
     volumes:
-      - .:/project
+      - .:/project:ro
     working_dir: /project
-    command: check
+    command: ["check", "--output", "github"]
 ```
 
-Run:
+The obsolete top-level `version` key is omitted; Compose v2 does not want it.
+
+To use `fix`, drop `:ro`:
+
 ```bash
-docker-compose run psx check
-docker-compose run psx fix --interactive
+docker compose run --rm psx fix --yes
 ```
 
 ### Build Docker Image Locally
@@ -315,69 +321,85 @@ $env:Path
 # Restart terminal after installation
 ```
 
-### Permission Denied
+### Permission denied
 
-**Issue:** Cannot write to `/usr/local/bin`
+Cannot write to `/usr/local/bin`. Install to your user directory instead:
 
-**Solution:**
 ```bash
-# Install to user directory instead
 mkdir -p ~/.local/bin
-curl -L -o ~/.local/bin/psx https://github.com/m-mdy-m/psx/releases/download/v1.0.0/psx-linux-amd64
+curl -fsSL -o ~/.local/bin/psx \
+  https://github.com/m-mdy-m/psx/releases/latest/download/psx-linux-amd64
 chmod +x ~/.local/bin/psx
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Build Errors
+Add that `export` to your shell profile to make it permanent.
 
-**Issue:** Build fails with Go errors
+### The installer downloaded a web page instead of a binary
 
-**Solution:**
+An old `install.sh` used `curl -L` without `-f`, so a 404 wrote HTML into the binary. Pull
+the current script:
+
 ```bash
-# Verify Go version
-go version  # Should be 1.25 or higher
+curl -fsSL -O https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh
+bash install.sh
+```
 
-# Update dependencies
+### Build errors
+
+```bash
+go version          # must be 1.25+
 go mod download
-go mod tidy
-
-# Clean and rebuild
-make clean
-make build
+make clean && make build
 ```
 
----
-
-## Verify Installation
-
-After installation, verify PSX is working:
+If `make` is unavailable or you are on Windows:
 
 ```bash
-# Check version
-psx --version
-
-# Run help
-psx --help
-
-# Test check command
-psx check --help
-```
-
-Expected output:
-```
-Detected: generic
-
-ERRORS (...)
-...
-
-Summary: X errors, Y warnings
-Status: FAILED ✗
+go build -o build/psx ./cmd/psx
 ```
 
 ---
 
-## Getting Help
+## Verify
 
-- **Issues:** https://github.com/m-mdy-m/psx/issues
-- **Discussions:** https://github.com/m-mdy-m/psx/discussions
-- **Email:** bitsgenix@gmail.com
+```bash
+psx --version
+psx check
+```
+
+`check` should print grouped findings and a status line, and exit 0 or 1:
+
+```
+Errors (1)
+
+  error  tests_folder
+        No tests found
+        fix: psx fix --rule tests_folder
+
+Result: 1 errors, 0 warnings
+Status: FAILED
+```
+
+If it hangs waiting for input, something is wrong: `check` never prompts. Run
+`psx check --verbose` and look for a prompt, or pass `--yes`.
+
+---
+
+## Next steps
+
+```bash
+psx init       # write a psx.yml tuned to this project
+psx check      # see what is missing
+psx fix        # create it
+```
+
+See [CONFIGURATION.md](CONFIGURATION.md) for the options.
+
+---
+
+## Getting help
+
+- Issues: https://github.com/m-mdy-m/psx/issues
+- Discussions: https://github.com/m-mdy-m/psx/discussions
+- Email: bitsgenix@gmail.com

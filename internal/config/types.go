@@ -38,31 +38,66 @@ type Config struct {
 	Fix     FixConfig                `yaml:"fix,omitempty"`
 	Custom  *CustomConfig            `yaml:"custom,omitempty"`
 
-	// not in yml file
-	Path        string                 `yaml:"-"`
-	ActiveRules map[string]*ActiveRule `yaml:"-"`
+	// Resolved at load time, not part of the YAML document.
+	ProjectPath string `yaml:"-"`
+	ConfigFile  string `yaml:"-"`
+	ProjectType string `yaml:"-"`
+	// DeclaredType is the raw project.type as written in the file, before
+	// normalisation. It is what tells "the user chose generic" apart from
+	// "the user chose nothing", which is the difference between trusting the
+	// value and running detection.
+	DeclaredType string                 `yaml:"-"`
+	ActiveRules  map[string]*ActiveRule `yaml:"-"`
 }
 
 // RULES METADATA (GLOBAL)
 type LanguagePatterns any
 
-// AdditionalCheck represents a check in a specific file
+// AdditionalCheck is a secondary assertion such as "package.json:license".
 type AdditionalCheck struct {
-	File  string // e.g., "package.json"
-	Field string // e.g., "license"
+	File  string `yaml:"file"`
+	Field string `yaml:"field"`
 }
 
-// RuleMetadata contains all information about a rule
+type FixSpec struct {
+	// Path is the single file or directory to create.
+	Path  string            `yaml:"path,omitempty"`
+	Files map[string]string `yaml:"files,omitempty"`
+	// Template names the resource template used for Path.
+	Template string `yaml:"template,omitempty"`
+	// Mode is the permission bitmask for created files; defaults to 0644.
+	Mode  uint32   `yaml:"mode,omitempty"`
+	Safe  bool     `yaml:"safe,omitempty"`
+	Needs []string `yaml:"needs,omitempty"`
+	// Content is an inline template body, used when no shared template exists.
+	Content string `yaml:"content,omitempty"`
+}
+
+// RuleMetadata is the declarative definition of a rule, loaded from rules.yml.
 type RuleMetadata struct {
-	ID               string           `yaml:"id"`
-	Category         string           `yaml:"category"`
-	Description      string           `yaml:"description"`
-	DefaultSeverity  Severity         `yaml:"severity"`
-	Patterns         LanguagePatterns `yaml:"patterns"` // []string or LanguagePatterns
-	AdditionalChecks []string         `yaml:"additional_checks,omitempty"`
-	Message          string           `yaml:"message"`
-	FixHint          string           `yaml:"fix_hint"`
-	DocURL           string           `yaml:"doc_url"`
+	ID               string            `yaml:"id"`
+	Category         string            `yaml:"category"`
+	Description      string            `yaml:"description"`
+	DefaultSeverity  Severity          `yaml:"severity"`
+	Patterns         LanguagePatterns  `yaml:"patterns"`
+	AdditionalChecks []AdditionalCheck `yaml:"additional_checks,omitempty"`
+	Fix              *FixSpec          `yaml:"fix,omitempty"`
+	Message          string            `yaml:"message"`
+	FixHint          string            `yaml:"fix_hint"`
+	DocURL           string            `yaml:"doc_url"`
+}
+
+// Fixable reports whether the rule declares an automatic fix.
+func (m RuleMetadata) Fixable() bool {
+	return m.Fix != nil && (m.Fix.Path != "" || len(m.Fix.Files) > 0)
+}
+
+// FileFixes returns the literal-path to template mapping for a multi-file fix.
+func (m RuleMetadata) FileFixes() map[string]string {
+	if m.Fix == nil {
+		return nil
+	}
+	return m.Fix.Files
 }
 
 // RulesMetadata contains all rule definitions

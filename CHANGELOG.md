@@ -5,7 +5,174 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-12-17
+## [3.0.0] - Unreleased
+
+Major release. The CLI, the rule system and the internals were reworked. Every item below
+was reproduced before it was fixed; see [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+### Fixed
+
+Correctness bugs that produced wrong results rather than errors:
+
+- **`**` globs matched nothing.** `filepath.Glob` does not support `**`, so
+  `tests_folder` failed on every Go project regardless of its tests — a Go project with
+  `internal/rules/engine_test.go` still reported no tests. Globbing now uses `doublestar`
+  and handles brace expansion.
+- **`project.type` was normalized then discarded.** Aliases such as `ts`, `js` and `golang`
+  never reached the pattern lookup, so no patterns matched and language-specific rules
+  silently reported success on projects that violated them.
+- **A rule with no applicable patterns was reported as a pass.** Results are now tri-state:
+  passed, failed, or skipped. Skips are counted separately and shown with `--show-skipped`.
+- **`check` was interactive and wrote to the project.** It read `fix`'s flags, and
+  `--interactive` defaulted to true, so every `psx check` opened a prompt form and wrote
+  `.psx-project.yml`. Prompts now require a real terminal, and read-only commands never
+  write.
+- **`psx help` printed nothing.** The help text was fetched and discarded. Help is now
+  produced by cobra.
+- **JSON output was not parseable.** Diagnostics were printed to stdout, so
+  `psx check -o json | jq` failed. All diagnostics moved to stderr.
+- **`psx.rar` placeholder text in generated files.** `scripts/test.sh` contained a literal
+  `{{test_command}}` and `clean.sh` contained `rm -rf {{build_dirs}}` — scripts that could
+  not run. Command variables now come from the language profile.
+- **`FUNDING.yml` was written as prose.** GitHub reads that file as structured data keyed
+  by platform, so a markdown list parses as YAML but is silently ignored.
+- **`ignore` was validated but never applied.** Vendored trees satisfied `tests_folder`.
+  Ignored directories are now pruned during the scan.
+- **`custom` paths could escape the project.** `path: ../../.bashrc` in a cloned repo's
+  config would write outside the project on `psx fix --yes`. Paths are now resolved against
+  the project root and rejected if they escape it, symlinks resolved.
+- **Generated scripts were not executable.** Created 0644.
+- **Empty files and directories failed their own rule.** `fix` filled an existing empty file
+  or directory instead of leaving the rule unsatisfied.
+- **`--config` was ignored.** The flag was registered on the root command and threaded into
+  the options struct, but `cmdctx.Load` passed an empty path to the loader, so every
+  invocation used whichever config it discovered instead.
+- **Project detection never ran.** `NormalizeProjectType("")` returns `generic`, and that
+  normalised value was written back onto the config. The command layer then saw a
+  non-empty declared type, concluded the user had asked for `generic`, and skipped
+  detection — so any project with an unset `project.type` was reported as `generic` no
+  matter what manifests it had. `psx detect` and `psx check` disagreed as a result. The
+  raw value is now kept separately from the normalised one.
+- **Global flags were read before they were parsed.** `baseOptions()` ran while the
+  command tree was being built, so it captured the flag defaults rather than the user's
+  values. Persistent flags are now applied inside `RunE`.
+- **Release binaries always reported "development".** The workflow passed
+  `-X 'main.version=…'` but the variable lives in `internal/command`. The build also had a
+  `|| go build` fallback that hid compile errors behind an unstripped, unversioned binary.
+- **Release and Docker jobs ran on branch pushes.** `${GITHUB_REF#refs/tags/v}` was
+  meaningless outside a tag build. Both are now tag-gated.
+- **Non-deterministic output.** Template selection iterated a map, so a project without a
+  `generic` tier could get different content each run.
+- **`--baseline` could not be bootstrapped.** It returned an error when the file did not
+  exist, but creating that file is the only way to adopt a baseline on an existing
+  repository. A missing file is now written from the current run, with a header explaining
+  how to shrink it.
+- **`psx watch --baseline` was silently ignored.** The flag was registered but never read,
+  so known issues were announced as fresh failures on every scan. Each iteration now filters
+  against the file, without creating one as a side effect of watching.
+- **`--level` filtered the report but not the summary.** `--level warning` printed an empty
+  report above a line reading `Result: 2 info`. Counts now come from what was actually
+  displayed.
+- **Compact mode under-counted.** It printed every finding but only summarised errors and
+  warnings, so a run with 12 failures read `12 failed (0 errors, 1 warnings)`. Both formats
+  now share one severity counter, and the parts always add up to the total.
+- **`psx fix` printed absolute paths.** Created files were listed by full path, which is
+  noisy and unreadable. Paths are now relative to the project root.
+
+### Added
+
+- **Examples.** Thirteen runnable configurations in `examples/`, from `minimal.yml` through
+  per-profile files to a `strict.yml` for gating a build. Each is also what `psx init`
+  produces for that profile. Validated by `TestExamplesAreValidConfigs`, so none can rot.
+- **`tree` package.** One `WalkDir` builds an immutable index; every rule then matches in
+  memory instead of issuing its own `stat` or glob. Literal prefixes narrow the candidate
+  set.
+- **Declarative fixes.** Each rule declares its own fix in YAML, including a literal path,
+  file mode, safety flag and template name. Adding a rule no longer requires writing Go,
+  and all per-rule `switch` statements are gone.
+- **Tri-state rule results.** `skipped` is distinct from `passed` and is visible in the
+  summary.
+- **Project detection.** Language and archetype are inferred from marker files
+  (`go.mod`, `package.json`, `pnpm-workspace.yaml`, `go.work`, `services/`, …) with a
+  confidence figure and the signals used. A declared `project.type` always wins.
+  `psx init` uses it to pick a sensible rule set.
+- **`psx init`** writes a `psx.yml` tuned to the detected profile.
+- **`psx rules`, `psx explain <rule>`** — inspect the catalogue.
+- **`psx detect`** — show the inferred language, kind, workspace globs and package managers.
+- **`psx watch`** — re-check on change, reporting only the difference. `--fix` applies rules
+  marked safe; `--once-clean` exits as soon as the project is clean.
+- **21 GitHub Actions templates** across five groups — CI, release, Docker, deploy and
+  security. Each is standalone. Includes the digest-push multi-arch Docker pattern and a
+  release orchestrator that calls per-platform `workflow_call` workers.
+- **Five workflow rules** (`workflow_ci`, `workflow_docker`, `workflow_release`,
+  `workflow_codeql`, `workflow_secret_scan`) that detect and create those files.
+- **`psx workflows`** to list and preview them.
+- **Eight output formats**: `table`, `compact`, `json`, `ndjson`, `sarif`, `github`,
+  `junit`, `markdown`.
+- **`--baseline`** forgives already-existing violations so psx can be adopted without
+  failing the build on day one.
+- **Rule filters**: `--only`, `--category`, `--level`, `--show-skipped`, `--all`.
+- **`--force`** to overwrite existing files; **`--yes`** to run unattended.
+- **New rules**: `gitattributes`, `env_example`, `lockfile`, `funding`, `support`,
+  `roadmap`, `architecture`, `runbook`, `openapi`, `makefile`, `kubernetes`, `nginx`.
+  43 rules in total, 37 auto-fixable.
+- **Rust and Python** language profiles, alongside Go and Node.js.
+- **New templates**: gitattributes, Makefile, `.env.example`, nginx, Kubernetes, Helm,
+  funding, support, roadmap, architecture, runbook, OpenAPI, release workflow, Dependabot
+  and Renovate.
+- **Tests.** Coverage across `tree`, `rules`, `resources`, `report` and `config`. The
+  notable ones: `TestEveryTemplateRenders` (no template may reference an unsupplied
+  variable), `TestGeneratedYAMLIsValid` (every generated YAML file must parse),
+  `TestFixIsIdempotent`, `TestWorkflowTemplatesAreValidYAML`.
+- **CI for psx itself**, with a job that runs psx against its own repository.
+- **`.gitattributes`** and **`dependabot.yml`**.
+- **Documentation**: `docs/RULES.md` (generated from `rules.yml`), `CONFIGURATION.md`,
+  `WORKFLOWS.md`, `ARCHITECTURE.md`, and a rewritten `CONTRIBUTING.md` and SRS.
+
+### Changed
+
+- **Command surface.** `check`, `fix`, `watch`, `init`, `rules`, `explain`, `workflows`,
+  `detect`. Flags now live on the command they affect: `fix` no longer accepts
+  `--output`, `--baseline` or `--fail-on`, which did nothing there.
+- **Fixes are literal.** `fix.path` must be a literal path. A glob describes something to
+  detect, not something safe to create.
+- **Fixes never overwrite silently.** A file with content is left alone unless `--force`.
+  Running `fix` twice always reports nothing the second time.
+- **Prompting requires a terminal.** In CI, in a pipe, or with `PSX_NON_INTERACTIVE`,
+  prompts return defaults instead of blocking on stdin.
+- **Diagnostics go to stderr**, always. stdout carries only the report.
+- **One template resolution path.** `resources.Template` covers documents, container files,
+  scripts and workflows alike.
+- **Deterministic output.** Rules are evaluated in sorted order; templates are selected in
+  sorted order.
+
+### Removed
+
+- **Global mutable flag state.** `flags.GetFlags()` returned the address of the defaults
+  struct, which is how `check` ended up reading `fix` flags. Each command owns its options.
+- **The `Rule` interface and `registry.go`.** Removed in 2.0.0 but still documented in
+  `CONTRIBUTING.md`; rules are data now.
+- **`pattern_resolver.go`, `content_gen.go`'s per-rule switches, `custom_rule.go`'s
+  unsanitised paths, and the `reporter` package** — replaced by `tree`, `resources`, the
+  declarative fix path and `report`.
+- **Dead configuration.** `additional_checks` had no implementation; `--level` was parsed
+  and ignored; `fix.backup` and `fix.interactive` were read and unused.
+
+### Migration
+
+- `project.type` is optional again: set it to `auto` or leave it empty to detect from the
+  layout. An explicit value still wins.
+- `ignore` now applies. Projects that relied on it being inert may see new failures in
+  vendored directories; add those paths to `ignore`.
+- `fix` no longer accepts `--output`, `--level`, `--baseline`, `--fail-on` or `--all`.
+  Use `check` to report.
+- Removed rules from 2.0.0 that never shipped as working rules (Renovate, Kubernetes, Nginx
+  as rules) are replaced by the workflow template library. `psx rules` lists the current
+  43.
+- CI consumers: `-o json` output is now a single valid document with passing rules omitted
+  unless `--all`. Use `--all` if you relied on the old shape.
+
+## [2.0.0] - 2025-12-19
 
 ### Added
 
@@ -140,3 +307,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **If you relied on auto-detection:** migrate to explicit `project.type` in user configs and onboarding docs.
 
 [2.0.0]: https://github.com/m-mdy-m/psx/releases/tag/v2.0.0
+
+[3.0.0]: https://github.com/m-mdy-m/psx/compare/v2.0.0...HEAD

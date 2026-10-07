@@ -2,191 +2,145 @@ package rules
 
 import (
 	"fmt"
-	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/m-mdy-m/psx/internal/config"
 	"github.com/m-mdy-m/psx/internal/resources"
-	"github.com/m-mdy-m/psx/internal/utils"
 )
 
+// ContentGenerator turns declarative fix specs into concrete file bodies.
+//
+// There is no per-rule switch here: rule metadata names a template, and the
+// resource registry resolves it. Adding a rule never requires editing Go.
 type ContentGenerator struct {
-	projectInfo *resources.ProjectInfo
-	projectType string
+	gen *resources.Generator
 }
 
-func NewContentGenerator(projectInfo *resources.ProjectInfo, projectType string) *ContentGenerator {
-	return &ContentGenerator{
-		projectInfo: projectInfo,
-		projectType: projectType,
-	}
+func NewContentGenerator(info *resources.ProjectInfo, projectType string) *ContentGenerator {
+	return &ContentGenerator{gen: resources.NewGenerator(info, projectType)}
 }
 
-func (cg *ContentGenerator) Generate(ruleID, pattern string) (string, error) {
-	filename := filepath.Base(pattern)
-
-	if content := cg.generateByRuleID(ruleID); content != "" {
-		return content, nil
+// Generate renders the body for a rule's single-file fix spec.
+func (cg *ContentGenerator) Generate(rule *config.ActiveRule, opts resources.Options) (string, error) {
+	if rule == nil || rule.Metadata.Fix == nil {
+		return "", fmt.Errorf("rule %s declares no fix", ruleIDOf(rule))
 	}
 
-	if content := cg.generateByPattern(filename); content != "" {
-		return content, nil
+	spec := rule.Metadata.Fix
+	name := spec.Template
+	if name == "" {
+		return "", fmt.Errorf("rule %s fix has no template", rule.ID)
 	}
 
-	return fmt.Sprintf("# %s\n\nTODO: Add content\n", filename), nil
+	if spec.Content != "" {
+		return replaceAll(spec.Content, cg.gen.Vars()), nil
+	}
+
+	// The gitignore fix merges the common block with the language block.
+	if name == resources.TmplGitignore {
+		return cg.gitignore(opts)
+	}
+
+	return cg.gen.Render(name, opts)
 }
 
-func (cg *ContentGenerator) generateByRuleID(ruleID string) string {
-	switch ruleID {
-	// General files
-	case "readme":
-		return resources.GetReadme(cg.projectInfo, cg.projectType)
-	case "license":
-		return resources.GetLicense(cg.projectInfo.License, cg.projectInfo.Author)
-	case "gitignore":
-		return resources.GetGitignore(cg.projectType)
-	case "changelog":
-		return resources.GetChangelog(cg.projectInfo)
-	case "contributing":
-		return resources.GetContributing()
-
-	// Documentation
-	case "api_docs":
-		return resources.GetAPIDocs(cg.projectInfo, cg.projectType)
-	case "security":
-		return resources.GetSecurity(cg.projectInfo)
-	case "code_of_conduct":
-		return resources.GetCodeOfConduct(cg.projectInfo)
-	case "pull_request_template":
-		return resources.GetPullRequestTemplate(cg.projectInfo)
-	case "codeowners":
-		return resources.GetCodeowners(cg.projectInfo)
-
-	// Quality tools
-	case "editorconfig":
-		return resources.GetEditorconfig(cg.projectType)
-	case "pre_commit":
-		return resources.GetPreCommit(cg.projectType)
-
-	// DevOps
-	case "dockerfile":
-		return resources.GetDockerfile(cg.projectInfo, cg.projectType)
-	case "dockerignore":
-		return resources.GetDockerignore(cg.projectType)
-	case "docker_compose":
-		return resources.GetDockerComposeWithPrompt(cg.projectInfo, cg.projectType)
-
-	// CI/CD
-	case "ci_config":
-		return resources.GetCIConfig(cg.projectInfo, cg.projectType)
-
-	default:
-		return ""
-	}
-}
-
-func (cg *ContentGenerator) generateByPattern(filename string) string {
-	lowerFilename := strings.ToLower(filename)
-
-	switch {
-	case strings.Contains(lowerFilename, "readme"):
-		return resources.GetReadme(cg.projectInfo, cg.projectType)
-	case strings.Contains(lowerFilename, "license"):
-		return resources.GetLicense(cg.projectInfo.License, cg.projectInfo.Author)
-	case lowerFilename == ".gitignore":
-		return resources.GetGitignore(cg.projectType)
-	case strings.Contains(lowerFilename, "changelog"):
-		return resources.GetChangelog(cg.projectInfo)
-	case strings.Contains(lowerFilename, "contributing"):
-		return resources.GetContributing()
-	case strings.Contains(lowerFilename, "security"):
-		return resources.GetSecurity(cg.projectInfo)
-	case strings.Contains(lowerFilename, "code_of_conduct"):
-		return resources.GetCodeOfConduct(cg.projectInfo)
-	case lowerFilename == ".editorconfig":
-		return resources.GetEditorconfig(cg.projectType)
-	case strings.Contains(lowerFilename, "dockerfile"):
-		return resources.GetDockerfile(cg.projectInfo, cg.projectType)
-	case lowerFilename == ".dockerignore":
-		return resources.GetDockerignore(cg.projectType)
-	case strings.Contains(lowerFilename, "docker-compose"):
-		return resources.GetDockerComposeWithPrompt(cg.projectInfo, cg.projectType)
-	case lowerFilename == "codeowners":
-		return resources.GetCodeowners(cg.projectInfo)
-	case strings.Contains(lowerFilename, "api"):
-		return resources.GetAPIDocs(cg.projectInfo, cg.projectType)
+// GenerateFiles renders every file declared by a multi-file fix spec.
+// The result map is keyed by project-relative path.
+func (cg *ContentGenerator) GenerateFiles(rule *config.ActiveRule, opts resources.Options) (map[string]string, error) {
+	if rule == nil || rule.Metadata.Fix == nil {
+		return nil, fmt.Errorf("rule %s declares no fix", ruleIDOf(rule))
 	}
 
-	return ""
-}
-
-func (cg *ContentGenerator) GenerateMultiple(ruleID string) (map[string]string, error) {
-	result := make(map[string]string)
-
-	switch ruleID {
-	case "issue_templates":
-		result[".github/ISSUE_TEMPLATE/bug_report.yml"] = resources.GetIssueBugReport()
-		result[".github/ISSUE_TEMPLATE/feature_request.yml"] = resources.GetIssueFeatureRequest()
-		result[".github/ISSUE_TEMPLATE/question.yml"] = resources.GetIssueQuestion()
-		result[".github/ISSUE_TEMPLATE/config.yml"] = resources.GetIssueTemplatesConfig(cg.projectInfo)
-		return result, nil
-
-	case "adr":
-		result["docs/adr/0001-record-architecture-decisions.md"] = resources.GetADRFirst(cg.projectInfo)
-		result["docs/adr/template.md"] = resources.GetADRTemplate(cg.projectInfo)
-		return result, nil
-
-	case "scripts_folder":
-		scripts := resources.GetScripts(cg.projectInfo, cg.projectType)
-		for name, content := range scripts {
-			result[fmt.Sprintf("scripts/%s", name)] = content
-		}
-		return result, nil
-
-	case "api_docs":
-		apiDocPath := cg.getAPIDocPath()
-		content := resources.GetAPIDocs(cg.projectInfo, cg.projectType)
-		result[apiDocPath] = content
-		return result, nil
-	case "ci_config":
-		return cg.generateCIConfig()
-	}
-
-	return nil, nil
-}
-
-func (cg *ContentGenerator) getAPIDocPath() string {
-	switch cg.projectType {
-	case "nodejs", "go":
-		return "docs/api/README.md"
-	default:
-		return "docs/API.md"
-	}
-}
-
-func (cg *ContentGenerator) generateCIConfig() (map[string]string, error) {
-	result := make(map[string]string)
-
-	platform, err := utils.PromptChoice(
-		"Which CI/CD platform do you want to use?",
-		[]string{"GitHub Actions", "GitLab CI", "Both", "Skip"},
-	)
-	if err != nil || platform == "Skip" {
+	files := rule.Metadata.Fix.Files
+	if len(files) == 0 {
 		return nil, nil
 	}
 
-	switch platform {
-	case "GitHub Actions":
-		workflow := resources.GetGitHubActionsWorkflow(cg.projectInfo, cg.projectType)
-		result[".github/workflows/ci.yml"] = workflow
-	case "GitLab CI":
-		config := resources.GetGitLabCIConfig(cg.projectInfo, cg.projectType)
-		result[".gitlab-ci.yml"] = config
-	case "Both":
-		workflow := resources.GetGitHubActionsWorkflow(cg.projectInfo, cg.projectType)
-		result[".github/workflows/ci.yml"] = workflow
-		config := resources.GetGitLabCIConfig(cg.projectInfo, cg.projectType)
-		result[".gitlab-ci.yml"] = config
+	out := make(map[string]string, len(files))
+	for _, path := range SortedPaths(files) {
+		tmpl := files[path]
+
+		var (
+			body string
+			err  error
+		)
+		switch {
+		case tmpl == "" && rule.Metadata.Fix.Content != "":
+			body = replaceAll(rule.Metadata.Fix.Content, cg.gen.Vars())
+		case resources.IsScriptTemplate(tmpl):
+			body = cg.gen.Scripts(opts)[strings.TrimPrefix(path, "scripts/")]
+		default:
+			body, err = cg.gen.Render(tmpl, opts)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("rule %s: template %q: %w", rule.ID, tmpl, err)
+		}
+		if strings.TrimSpace(body) == "" {
+			return nil, fmt.Errorf("rule %s: template %q produced no content", rule.ID, tmpl)
+		}
+		out[path] = body
+	}
+	return out, nil
+}
+
+func (cg *ContentGenerator) GenerateScripts(opts resources.Options) map[string]string {
+	return cg.gen.Scripts(opts)
+}
+
+func (cg *ContentGenerator) gitignore(opts resources.Options) (string, error) {
+	pt := opts.ProjectType
+	if pt == "" {
+		pt = cg.gen.ProjectType()
 	}
 
-	return result, nil
+	var langBlock string
+	switch pt {
+	case "nodejs":
+		langBlock = resources.GitignoreLanguageBlock("nodejs")
+	case "go":
+		langBlock = resources.GitignoreLanguageBlock("go")
+	}
+
+	common := resources.GitignoreCommonBlock()
+	if langBlock == "" {
+		return replaceAll(common, cg.gen.Vars()), nil
+	}
+	return replaceAll(common+"\n\n"+langBlock, cg.gen.Vars()), nil
+}
+
+func (cg *ContentGenerator) Modes(files map[string]string, spec *config.FixSpec) map[string]uint32 {
+	out := make(map[string]uint32, len(files))
+	for path := range files {
+		if spec != nil && spec.Mode != 0 {
+			out[path] = spec.Mode
+			continue
+		}
+		out[path] = resources.ModeFromName(path)
+	}
+	return out
+}
+
+func SortedPaths(files map[string]string) []string {
+	out := make([]string, 0, len(files))
+	for p := range files {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func ruleIDOf(rule *config.ActiveRule) string {
+	if rule == nil {
+		return "<nil>"
+	}
+	return rule.ID
+}
+
+func replaceAll(body string, vars map[string]string) string {
+	out := body
+	for k, v := range vars {
+		out = strings.ReplaceAll(out, "{{"+k+"}}", v)
+	}
+	return out
 }

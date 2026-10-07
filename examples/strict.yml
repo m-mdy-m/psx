@@ -1,0 +1,40 @@
+# Strict: gate the build.
+#
+# Every rule here is `error`, so `psx check` exits non-zero on any of them. Keep the
+# list short enough that people act on it — a config full of errors trains everyone
+# to ignore it.
+#
+# Pair with a baseline when introducing this to an existing repository:
+#
+#   psx check --config examples/strict.yml --baseline .psx-baseline.yml .
+version: 1
+
+project:
+  type: ""
+
+rules:
+  # Without these the project is not usable.
+  readme: error
+  package_manager: error
+  tests_folder: error
+  lockfile: error
+
+  # Reproducibility and safety.
+  gitignore: error
+  env_example: error
+  dependency_updates: error
+
+  # Keep working on the main branch.
+  ci_config: error
+
+fix:
+  interactive: true
+  # Copy the original to .psx/backup before overwriting.
+  backup: true
+
+ignore:
+  - node_modules/
+  - vendor/
+  - dist/
+  - build/
+  - coverage/

@@ -1,287 +1,241 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/spf13/cobra"
 
 	"github.com/m-mdy-m/psx/internal/cmdctx"
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/logger"
-	"github.com/m-mdy-m/psx/internal/resources"
 	"github.com/m-mdy-m/psx/internal/rules"
+	"github.com/m-mdy-m/psx/internal/ui"
 )
 
-var FixCmd = &cobra.Command{
-	Use:   "fix [path]",
-	Short: "Fix structural issues",
-	Long: `Automatically fix common structural issues in your project.
+func newFixCmd() *cobra.Command {
+	opts := baseOptions()
+	opts.Fix.Interactive = true
 
-Examples:
-  psx fix                       # Interactive mode (asks before each fix)
-  psx fix --dry-run             # Preview changes without applying
-  psx fix --rule readme         # Fix only README
-  psx fix --all                 # Fix all issues without prompts
-  psx fix --create-backups      # Create backups before modifying files`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runFixCommand,
+	cmd := &cobra.Command{
+		Use:   "fix [path]",
+		Short: "Create the files a project is missing",
+		Long: "Create the files and directories that failed a check.\n\n" +
+			"Nothing outside the project is touched, and an existing file with content is\n" +
+			"never overwritten unless --force is given.\n\n" +
+			"Examples:\n" +
+			"  psx fix --dry-run          # preview without writing\n" +
+			"  psx fix                    # confirm each change\n" +
+			"  psx fix --yes              # apply everything unattended\n" +
+			"  psx fix --rule readme      # fix a single rule\n" +
+			"  psx fix --category cicd    # fix a whole category",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			applyGlobals(&opts)
+			return runFixCommand(cmd, args, &opts)
+		},
+	}
+
+	cobraScope(cmd, &opts)
+	f := cmd.Flags()
+	f.BoolVar(&opts.Fix.DryRun, "dry-run", false, "show what would be created without writing")
+	f.BoolVar(&opts.Fix.Force, "force", false, "overwrite existing files that have content")
+	f.StringVar(&opts.Fix.RuleID, "rule", "", "fix only this rule id")
+	f.BoolVarP(&opts.Fix.Interactive, "interactive", "i", true, "confirm each change before applying")
+	f.StringToStringVar(&opts.Fix.Answers, "answer", nil,
+		"answer template questions, e.g. --answer ci_platform=github")
+
+	return cmd
 }
 
-func init() {
-	f := flags.GetFlags()
-	df := flags.DefaultValues.Fix
+func runFixCommand(cmd *cobra.Command, args []string, opts *flags.Options) error {
+	if err := opts.Validate(); err != nil {
+		return commandError(exitArgs, "%v", err)
+	}
 
-	FixCmd.Flags().BoolVarP(&f.Fix.Interactive, "interactive", "i", df.Interactive,
-		"ask before each fix")
+	mode := cmdctx.ModeInteractive
+	if opts.Fix.DryRun {
+		mode = cmdctx.ModeDryRun
+	}
+	if opts.Global.Yes {
+		opts.Fix.Interactive = false
+	}
 
-	FixCmd.Flags().BoolVar(&f.Fix.DryRun, "dry-run", df.DryRun,
-		"show what would be fixed without applying changes")
+	ctx, err := cmdctx.Load(fixRoot(args), opts.Global.ConfigFile, mode)
+	if err != nil {
+		return err
+	}
+	if err := filterRules(ctx, *opts); err != nil {
+		return err
+	}
 
-	FixCmd.Flags().StringVar(&f.Fix.RuleID, "rule", df.RuleID,
-		"fix specific rule only")
-
-	FixCmd.Flags().BoolVar(&f.Fix.All, "all", df.All,
-		"fix all issues without prompting")
-
-	FixCmd.Flags().BoolVar(&f.Fix.CreateBackups, "create-backups", df.CreateBackups,
-		"create backup files before modifying")
-}
-
-func runFixCommand(cmd *cobra.Command, args []string) error {
-	ctx, err := cmdctx.LoadProject(args)
+	res, err := runCheck(ctx)
 	if err != nil {
 		return err
 	}
 
-	f := flags.GetFlags()
-
-	if f.Fix.DryRun {
-		logger.Info(resources.GetMessage("fix", "dry_run"))
-	} else if f.Fix.Interactive {
-		logger.Info(resources.GetMessage("fix", "interactive"))
+	targets := fixableRules(res)
+	if opts.Fix.RuleID != "" {
+		targets = []string{opts.Fix.RuleID}
 	}
-	fmt.Println()
-
-	logger.Verbose(resources.FormatMessage("check", "start", ctx.Path.Abs))
-	rulesCtx := &rules.Context{
-		ProjectPath: ctx.Path.Abs,
-		ProjectType: ctx.ProjectType,
-		ProjectInfo: ctx.ProjectInfo,
-		Config:      ctx.Config,
-	}
-	execResult, err := rules.Execute(ctx.Config, rulesCtx)
-	if err != nil {
-		return fmt.Errorf("validation failed: %w", err)
-	}
-	failedRules := getFixableRules(execResult)
-
-	if len(failedRules) == 0 {
-		logger.Success(resources.GetMessage("fix", "success_none"))
+	if len(targets) == 0 {
+		logger.Success("Nothing to fix")
 		return nil
 	}
 
-	logger.Info(resources.FormatMessage("fix", "prompt_many", len(failedRules)))
-	fmt.Println()
-	if f.Fix.RuleID != "" {
-		return fixSpecificRule(ctx, rulesCtx, f.Fix.RuleID)
-	}
-	fixCtx := &rules.FixContext{
-		Context:       rulesCtx,
-		Interactive:   f.Fix.Interactive && !f.Fix.All,
-		DryRun:        f.Fix.DryRun,
-		CreateBackups: f.Fix.CreateBackups,
+	if opts.Fix.DryRun {
+		logger.Info("Dry run: no files will be written")
 	}
 
-	results, err := rules.FixAll(ctx.Config, fixCtx, failedRules)
-	if err != nil {
-		return fmt.Errorf("fix failed: %w", err)
+	if opts.Fix.Interactive {
+		targets = selectRules(targets)
+		if len(targets) == 0 {
+			logger.Info("No rules selected")
+			return nil
+		}
 	}
-	displayFixResults(results, f.Fix.DryRun)
-	summary := generateSummary(results)
-	displayFixSummary(summary, f.Fix.DryRun)
 
-	if f.Fix.DryRun {
-		fmt.Println()
-		logger.Info("Run without --dry-run to apply changes")
+	results := rules.FixAll(ctx.Config, &rules.FixContext{
+		Context:       ctx.RuleContext(),
+		Interactive:   opts.Fix.Interactive,
+		DryRun:        opts.Fix.DryRun,
+		CreateBackups: ctx.Config.Fix.Backup || opts.Fix.CreateBackups,
+		Force:         opts.Fix.Force,
+	}, targets, resourceOptions(ctx, *opts))
+
+	reportFixResults(results, opts.Fix.DryRun, ctx.Path)
+	summary := summarizeFix(results)
+
+	if opts.Fix.DryRun {
+		logger.Info("Run without --dry-run to apply")
 		return nil
 	}
-
+	if summary.Failed > 0 {
+		return commandError(exitCode, "%d rule(s) could not be fixed", summary.Failed)
+	}
 	if summary.Fixed > 0 {
-		fmt.Println()
-		logger.Success(resources.FormatMessage("fix", "success_many", summary.Fixed))
-		logger.Info("Run 'psx check' to verify")
+		logger.Successf("Created %d file(s)", summary.Changes)
+		logger.Info("Run `psx check` to verify")
 	}
-
 	return nil
 }
 
-func fixSpecificRule(ctx *cmdctx.ProjectContext, rulesCtx *rules.Context, ruleID string) error {
-	f := flags.GetFlags()
+func fixRoot(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	return "."
+}
 
-	fixCtx := &rules.FixContext{
-		Context:       rulesCtx,
-		Interactive:   f.Fix.Interactive,
-		DryRun:        f.Fix.DryRun,
-		CreateBackups: f.Fix.CreateBackups,
+// selectRules lets the user choose which failing rules to fix.
+//
+// The prompt is skipped entirely when there is no terminal, so an unattended run
+// never blocks on stdin.
+func selectRules(targets []string) []string {
+	if !ui.IsInteractive() {
+		return targets
 	}
 
-	result, err := rules.Fix(ctx.Config, fixCtx, ruleID)
-	if err != nil {
-		return fmt.Errorf("fix failed: %w", err)
-	}
+	present := make([]string, len(targets))
+	copy(present, targets)
+	sort.Strings(present)
 
-	if result.Skipped {
-		logger.Info("Fix skipped")
+	fmt.Fprintf(logger.Out, "Fix %d rule(s)?\n", len(present))
+	choice := ui.Choose("Choose an action", []string{
+		"all",
+		"none",
+		"select individually",
+	})
+	switch choice {
+	case "none":
 		return nil
+	case "select individually":
+		return selectIndividually(present)
+	default:
+		return present
 	}
-
-	if result.Fixed {
-		for _, change := range result.Changes {
-			printChange(change, f.Fix.DryRun)
-		}
-
-		if f.Fix.DryRun {
-			fmt.Println()
-			logger.Info("Run without --dry-run to apply")
-		} else {
-			fmt.Println()
-			logger.Success(resources.GetMessage("fix", "success_one"))
-		}
-	}
-
-	return nil
 }
 
-func getFixableRules(result *rules.ExecutionResult) []string {
-	fixable := []string{}
+// selectIndividually prompts for each rule, remembering an "all" or "none" answer.
+func selectIndividually(present []string) []string {
+	var chosen []string
+	applyToRest := false
+	skipRest := false
 
-	for _, r := range result.Results {
-		if !r.Passed {
-			fixable = append(fixable, r.RuleID)
-		}
-	}
-
-	return fixable
-}
-
-func displayFixResults(results []*rules.FixResult, dryRun bool) {
-	for _, fix := range results {
-		if fix.Skipped {
-			logger.Verbose(fmt.Sprintf("Skipped: %s", fix.RuleID))
+	for _, id := range present {
+		switch {
+		case skipRest:
+			continue
+		case applyToRest:
+			chosen = append(chosen, id)
 			continue
 		}
 
-		if fix.Error != nil {
-			logger.Error(fmt.Sprintf("%s: %v", fix.RuleID, fix.Error))
-			continue
-		}
-
-		if fix.Fixed {
-			logger.Verbose(resources.FormatMessage("fix", "applied", fix.RuleID))
-			for _, change := range fix.Changes {
-				printChange(change, dryRun)
-			}
+		switch ui.Prompt(fmt.Sprintf("Fix %s", id), []string{"yes", "no", "all", "quit"}) {
+		case 0:
+			chosen = append(chosen, id)
+		case 2:
+			chosen = append(chosen, id)
+			applyToRest = true
+		case 3:
+			return chosen
 		}
 	}
+	return chosen
 }
 
-func printChange(change rules.Change, dryRun bool) {
-	f := flags.GetFlags()
-
-	if f.GlobalFlags.Quiet {
-		return
-	}
-
-	prefix := "✓"
-	if dryRun {
-		prefix = "→"
-	}
-
-	fmt.Printf("%s %s\n", prefix, change.Description)
-
-	if f.GlobalFlags.Verbose && change.Content != "" {
-		fmt.Println(formatContent(change.Content, 5))
-	}
-}
-
-type FixSummary struct {
-	Total   int
+// fixSummary aggregates fix outcomes.
+type fixSummary struct {
 	Fixed   int
 	Skipped int
 	Failed  int
 	Changes int
 }
 
-func generateSummary(results []*rules.FixResult) FixSummary {
-	summary := FixSummary{Total: len(results)}
-
-	for _, fix := range results {
-		if fix.Fixed {
-			summary.Fixed++
-			summary.Changes += len(fix.Changes)
-		} else if fix.Skipped {
-			summary.Skipped++
-		} else if fix.Error != nil {
-			summary.Failed++
+func summarizeFix(results []*rules.FixResult) fixSummary {
+	var s fixSummary
+	for _, r := range results {
+		switch {
+		case r.Error != nil:
+			s.Failed++
+		case r.Fixed:
+			s.Fixed++
+			s.Changes += len(r.Changes)
+		case r.Skipped:
+			s.Skipped++
 		}
 	}
-
-	return summary
+	return s
 }
 
-func displayFixSummary(summary FixSummary, dryRun bool) {
-	f := flags.GetFlags()
-
-	if f.GlobalFlags.Quiet {
-		return
-	}
-
-	fmt.Println()
-	fmt.Println("Summary:")
-	fmt.Printf("  Total:   %d\n", summary.Total)
-
+func reportFixResults(results []*rules.FixResult, dryRun bool, root string) {
+	marker := "created"
 	if dryRun {
-		fmt.Printf("  Would fix: %d\n", summary.Fixed)
-	} else {
-		fmt.Printf("  Fixed:   %d\n", summary.Fixed)
+		marker = "would create"
 	}
 
-	if summary.Skipped > 0 {
-		fmt.Printf("  Skipped: %d\n", summary.Skipped)
-	}
-
-	if summary.Failed > 0 {
-		fmt.Printf("  Failed:  %d\n", summary.Failed)
-	}
-
-	if summary.Changes > 0 {
-		fmt.Printf("  Changes: %d\n", summary.Changes)
-	}
-}
-
-func formatContent(content string, maxLines int) string {
-	lines := []string{}
-	current := ""
-	for _, char := range content {
-		if char == '\n' {
-			lines = append(lines, current)
-			current = ""
-		} else {
-			current += string(char)
+	for _, r := range results {
+		if r.Error != nil {
+			logger.Errorf("%s: %v", r.RuleID, r.Error)
+			continue
+		}
+		if r.Skipped {
+			if r.Reason != "" {
+				logger.Verbosef("skipped %s: %s", r.RuleID, r.Reason)
+			}
+			continue
+		}
+		for _, c := range r.Changes {
+			logger.Step(fmt.Sprintf("%-13s %s", marker, c.Rel(root)))
+			if globalOpts.verbose && c.Content != "" {
+				logger.Plain(rules.Preview(c.Content, 8))
+			}
 		}
 	}
-	if current != "" {
-		lines = append(lines, current)
-	}
-
-	if len(lines) <= maxLines {
-		return content
-	}
-
-	displayed := ""
-	for i := 0; i < maxLines; i++ {
-		displayed += lines[i] + "\n"
-	}
-	remaining := len(lines) - maxLines
-	return fmt.Sprintf("%s... (%d more lines)", displayed, remaining)
 }
+
+// jsonUnmarshal is a small indirection so check.go need not import encoding/json.
+func jsonUnmarshal(data []byte, v any) error { return json.Unmarshal(data, v) }
