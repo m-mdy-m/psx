@@ -101,10 +101,19 @@ defaulted to true, every `psx check` opened a prompt form and wrote `.psx-projec
 Prompting additionally requires a real terminal. In CI, in a pipe, or with
 `PSX_NON_INTERACTIVE` set, prompts return their default rather than blocking on stdin.
 
-### stdout carries only the report
+### A check report is the only thing on stdout
 
-Every diagnostic goes to stderr. `psx check -o json | jq` used to fail because
-"Configuration loaded and validated" was printed to stdout first.
+Every diagnostic a command emits goes to stderr, so `psx check -o json | jq` works.
+It used to fail because "Configuration loaded and validated" was printed to stdout
+first. `logger` has a test that pins which stream each helper uses.
+
+Two helpers are deliberately exempt, because for their commands the output *is* the
+result rather than a diagnostic:
+
+- `logger.Step` writes to stdout. It reports each file `fix` created, so
+  `psx fix --dry-run` reads like any other listing. `check` never reaches it.
+- `logger.Plain` writes to stdout and ignores `--quiet`, because three of its four
+  callers emit a `--json` body. Quiet must not silence a report.
 
 ### Fixes are declarative and idempotent
 
@@ -134,18 +143,22 @@ template. `resources.IsHumanPlaceholder` marks them so they are not treated as b
 
 | Package | Covers |
 | --- | --- |
-| `tree` | Glob semantics, ignore rules, negation, snapshot behaviour |
+| `tree` | Glob semantics, ignore rules, negation, snapshot behaviour, fingerprinting |
 | `rules` | Engine verdicts, ignore handling, idempotence, generated content, custom trees |
-| `resources` | Template rendering, placeholder safety, workflow validity |
+| `resources` | Template rendering, placeholder safety, workflow validity, package managers |
 | `report` | Every output format, JSON purity, CI formats, summary consistency |
 | `command` | Baselines, exit-code thresholds, fix summaries |
 | `config` | Generated rule reference, and that every doc link resolves |
 | `cmdctx` | Config discovery, detection, path resolution |
+| `watch` | Fingerprinting, config-change detection, diffing, the poll loop, `--once` |
+| `detect` | The marker table, kind inference, workspace globs, determinism |
+| `flags` | Defaults, the validated enums, flag conflicts, quiet/verbose precedence |
+| `logger` | Which stream each helper writes to, level precedence, `--no-color` |
+| `ui` | Answer parsing, the non-interactive path, stdin handling |
+| `utils` | Filesystem helpers and their failure modes |
 
-Three packages have **no tests yet**: `flags`, `logger`, `ui`, `utils` and `detect` are
-exercised only through the packages above. `watch` has no unit tests either, so its
-debounce and interval behaviour is the least protected code in the project. See
-[Verification](VERIFICATION.md) for the full accounting.
+Every package has tests. See [Verification](VERIFICATION.md) for what is still not
+covered.
 
 The suites worth knowing about, because they each caught a class of bug:
 

@@ -109,6 +109,9 @@ Correctness bugs that produced wrong results rather than errors:
 - **`flags` carried three fields nothing could reach.** `Fix.Watch` was never set by a flag,
   `Fix.CreateBackups` had no `--backup` flag behind it, and `Watch.Format` was never read.
   Two `Defaults()` also disagreed on the watch timings and one silently overwrote the other.
+- **`utils` declared a second, wrong exit-code table.** It assigned `ExitArgs = 4` where
+  the command package uses 3, and nothing referenced it. Removed rather than corrected,
+  since a second table that nobody reads is how the real one drifts.
 
 ### Added
 

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -67,12 +68,17 @@ func Confirm(question string, def bool) bool {
 	if !ok {
 		return def
 	}
-	switch strings.ToLower(answer) {
-	case "":
-		return def
-	case "y", "yes":
+	return parseYesNo(answer, def)
+}
+
+// parseYesNo reads a yes/no answer, falling back to def for anything it does not
+// recognise. It is separated from Confirm so the decision can be tested without
+// a terminal.
+func parseYesNo(answer string, def bool) bool {
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "y", "yes", "1":
 		return true
-	case "n", "no":
+	case "n", "no", "0":
 		return false
 	default:
 		return def
@@ -112,22 +118,40 @@ func Prompt(question string, choices []string) int {
 	if !ok {
 		return 0
 	}
+	return parseChoice(answer, len(choices))
+}
 
-	var n int
-	if _, err := fmt.Sscanf(answer, "%d", &n); err != nil {
+// parseChoice maps a 1-based answer onto a 0-based index, defaulting to the
+// first choice. It rejects trailing junk so "2x" is a typo rather than a choice.
+func parseChoice(answer string, choices int) int {
+	if choices <= 0 {
+		return -1
+	}
+	answer = strings.TrimSpace(answer)
+	if answer == "" {
 		return 0
 	}
-	if n < 1 || n > len(choices) {
+	for _, r := range answer {
+		if r < '0' || r > '9' {
+			return 0
+		}
+	}
+	n, err := strconv.Atoi(answer)
+	if err != nil || n < 1 || n > choices {
 		return 0
 	}
 	return n - 1
 }
 
 func Choose(question string, choices []string) string {
-	if i := Prompt(question, choices); i >= 0 && i < len(choices) {
-		return choices[i]
+	return choose(choices, Prompt(question, choices))
+}
+
+func choose(choices []string, i int) string {
+	if i < 0 || i >= len(choices) {
+		return ""
 	}
-	return ""
+	return choices[i]
 }
 
 func Input(question, def string) string {
@@ -141,10 +165,19 @@ func Input(question, def string) string {
 	}
 
 	answer, ok := readLine()
-	if !ok || strings.TrimSpace(answer) == "" {
+	if !ok {
 		return def
 	}
-	return strings.TrimSpace(answer)
+	return parseInput(answer, def)
+}
+
+// parseInput trims the answer and substitutes def for a blank one.
+func parseInput(answer, def string) string {
+	answer = strings.TrimSpace(answer)
+	if answer == "" {
+		return def
+	}
+	return answer
 }
 
 func readLine() (string, bool) {

@@ -126,17 +126,20 @@ something you did not know. Two rules:
 
 Being honest about the gaps:
 
-- **Not every package has tests.** `flags`, `logger`, `ui`, `utils` and `detect` are
-  exercised indirectly but have no dedicated test files. Most are thin wrappers, but that
-  is an assumption, not a guarantee. `internal/command` only got tests in this release; the
-  `--baseline` defects survived precisely because nothing covered it.
-- **`watch` is untested at the unit level.** The file-watching loop is only covered by
-  running the binary. Debounce and interval behaviour are the most likely place for a
-  regression to hide.
+- **Prompts are tested by their parsing, not by their interaction.** `ui` splits the
+  answer parsing from the terminal handling so it can be tested at all — under `go test`
+  there is no terminal, so `IsInteractive` is always false. The rendering of a prompt,
+  and what a real user sees, is still unverified.
 - **Templates are checked for validity, not for quality.** psx can prove a generated
   `Makefile` is syntactically correct, but not that its targets are the ones you want.
-- **Fixes are not verified by running what they generate.** psx creates a `.github/workflows/ci.yml`
-  and parses it back as YAML, but does not execute the workflow.
+- **Fixes are not verified by running what they generate.** psx creates a
+  `.github/workflows/ci.yml` and parses it back as YAML, but does not execute the
+  workflow.
+- **The watcher is tested against a real filesystem, not a real editor.** The timing
+  tests use millisecond intervals, so a change that only appears under heavy filesystem
+  contention would not be caught.
+- **`--fail-on` and the exit codes are only tested at the unit level.** No test asserts
+  the exit status of the built binary under every failure mode.
 
 These are the first things to add tests for. See
 [Contributing](CONTRIBUTING.md).
