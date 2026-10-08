@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     ./cmd/psx
 
 # final image
-FROM alpine:3.18
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /usr/local/bin/psx /usr/local/bin/psx
 RUN chmod +x /usr/local/bin/psx
