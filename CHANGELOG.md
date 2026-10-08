@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-10-08
+
+### Fixed
+
+- **Unix installer cleanup failed under set -u.** The temporary-directory EXIT trap could reference a local variable after its scope ended, producing `tmp_dir: unbound variable` after a successful installation.
+- **PowerShell installer failed to parse.** Error handling used a variable immediately followed by a colon, which PowerShell interpreted as an invalid variable reference. The message now uses explicit formatting.
+- **PSX dogfooding CI failed because psx.yml was missing.** Added a repository configuration used by the CI self-check job.
+- **Go module verification failed in CI.** go.mod and go.sum are now synchronized with the actual doublestar dependency usage and current module graph.
+
+### Changed
+
+- Installer cleanup is now safe with strict Bash mode enabled.
+- PowerShell installer error messages are compatible with both direct script execution and irm ... | iex.
+- The repository now maintains an explicit PSX configuration for its own CI structure check.
+
 ## [0.3.1] - 2026-10-08
 
 ### Fixed
