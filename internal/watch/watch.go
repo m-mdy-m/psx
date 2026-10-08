@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/m-mdy-m/psx/internal/config"
@@ -21,81 +20,38 @@ import (
 	"github.com/m-mdy-m/psx/internal/tree"
 )
 
-type State struct {
-	// Fingerprint hashes path, size and modification time for every file.
-	Fingerprint string
-	// Count is the number of files observed.
-	Count int
-	// ConfigHash fingerprints the configuration file, so an edited config can
-	// be told apart from an edited source file.
-	ConfigHash string
-}
+// alwaysIgnored never contributes to a project's structure, and watching them
+// wastes a re-check per git operation or per dependency install.
+var alwaysIgnored = []string{".git/", "node_modules/", "vendor/"}
 
-// Scan builds a fingerprint for the project tree.
-func Scan(root, configFile string, ignore []string) (State, error) {
-	var sb strings.Builder
-	count := 0
-
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil // skip unreadable entries
-		}
-		if d.IsDir() {
-			name := d.Name()
-			if path != root && (name == ".git" || name == "node_modules" || name == "vendor") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		info, ierr := d.Info()
-		if ierr != nil {
-			return nil
-		}
-		rel, _ := filepath.Rel(root, path)
-		sb.WriteString(filepath.ToSlash(rel))
-		sb.WriteByte(':')
-		sb.WriteString(fmt.Sprint(info.Size()))
-		sb.WriteByte(':')
-		sb.WriteString(fmt.Sprint(info.ModTime().UnixNano()))
-		sb.WriteByte('\n')
-		count++
-		return nil
-	})
-	if err != nil {
-		return State{}, err
-	}
-
-	return State{
-		Fingerprint: hash(sb.String()),
-		Count:       count,
-		ConfigHash:  fileHash(configFile),
-	}, nil
-}
-
-// Changed reports whether the project or its configuration differs.
-func (s State) Changed(prev State) bool {
-	return s.Fingerprint != prev.Fingerprint || s.ConfigHash != prev.ConfigHash
-}
-
-// ConfigChanged reports whether only the configuration differs.
-func (s State) ConfigChanged(prev State) bool {
-	return s.ConfigHash != prev.ConfigHash
-}
-
-// Run watches the project until ctx is cancelled or stop is closed.
+// watchIgnore layers the always-ignored directories over the user's patterns, so
+// the walk that detects a change prunes exactly what the check itself prunes.
 //
-// runCheck is invoked on every change; onChange receives the new and previous
-// results so the caller can render a diff rather than a full report.
-func Run(ctx context.Context, opts Options, runCheck func() (*rules.ExecutionResult, error), onChange func(prev, cur *rules.ExecutionResult)) error {
+// The defaults go last because gitignore negation is last-match-wins. Someone who
+// writes "!/.git/" would otherwise re-open .git to the watcher, and every commit
+// would cost a full re-check for a verdict that cannot change.
+func watchIgnore(user []string) []string {
+	out := make([]string, 0, len(user)+len(alwaysIgnored))
+	out = append(out, user...)
+	return append(out, alwaysIgnored...)
+}
+
+// Run watches the project until ctx is cancelled.
+//
+// The tree is walked once per change: the snapshot that detects the change is the
+// same one the check is evaluated against, so a file cannot change between the
+// fingerprint and the verdict.
+func Run(ctx context.Context, opts Options, runCheck func(*tree.Snapshot) (*rules.ExecutionResult, error), onChange func(prev, cur *rules.ExecutionResult)) error {
 	root := opts.Root
 
-	current, err := Scan(root, opts.ConfigFile, opts.Ignore)
+	snap, err := tree.Scan(root, watchIgnore(opts.Ignore))
 	if err != nil {
 		return fmt.Errorf("initial scan: %w", err)
 	}
-	logger.Verbosef("watching %s (%d files)", root, current.Count)
+	current, files := snap.Fingerprint()
+	logger.Verbosef("watching %s (%d files)", root, files)
 
-	prevResult, err := runCheck()
+	prevResult, err := runCheck(snap)
 	if err != nil {
 		return err
 	}
@@ -116,6 +72,7 @@ func Run(ctx context.Context, opts Options, runCheck func() (*rules.ExecutionRes
 		<-debounce.C
 	}
 
+	configHash := fileHash(opts.ConfigFile)
 	var pending bool
 	for {
 		select {
@@ -125,17 +82,19 @@ func Run(ctx context.Context, opts Options, runCheck func() (*rules.ExecutionRes
 		case <-debounce.C:
 			// Coalesce bursts of writes into a single re-check.
 			pending = false
-			next, err := Scan(root, opts.ConfigFile, opts.Ignore)
+			next, err := tree.Scan(root, watchIgnore(opts.Ignore))
 			if err != nil {
 				logger.Verbosef("rescan failed: %v", err)
 				continue
 			}
-			if !next.Changed(current) {
+			fingerprint, _ := next.Fingerprint()
+			cfgHash := fileHash(opts.ConfigFile)
+			if fingerprint == current && cfgHash == configHash {
 				continue
 			}
+			current, configHash = fingerprint, cfgHash
 
-			current = next
-			result, err := runCheck()
+			result, err := runCheck(next)
 			if err != nil {
 				logger.Errorf("check failed: %v", err)
 				continue
@@ -191,6 +150,10 @@ type Diff struct {
 }
 
 func Compare(prev, cur *rules.ExecutionResult) []Diff {
+	if cur == nil {
+		return nil
+	}
+
 	before := map[string]rules.RuleResult{}
 	if prev != nil {
 		for _, r := range prev.Results {
@@ -229,10 +192,6 @@ func Compare(prev, cur *rules.ExecutionResult) []Diff {
 
 	sort.SliceStable(out, func(i, j int) bool { return out[i].RuleID < out[j].RuleID })
 	return out
-}
-
-func Snapshot(root string, ignore []string) (*tree.Snapshot, error) {
-	return tree.Scan(root, ignore)
 }
 
 func fileHash(path string) string {

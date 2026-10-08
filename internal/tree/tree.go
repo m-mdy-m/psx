@@ -5,10 +5,12 @@
 package tree
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -16,8 +18,9 @@ import (
 
 // Entry is a single indexed path.
 type Entry struct {
-	Size  int64
-	IsDir bool
+	Size    int64
+	IsDir   bool
+	ModTime int64
 }
 
 // Snapshot is an immutable index of a project tree, keyed by slash-separated
@@ -30,6 +33,48 @@ type Snapshot struct {
 }
 
 func (s *Snapshot) Root() string { return s.root }
+
+// Fingerprint hashes the path, size and modification time of every file and
+// returns that hash with the file count, so a watcher can ask "has anything
+// changed?" without walking the tree a second time.
+func (s *Snapshot) Fingerprint() (hash string, files int) {
+	paths := make([]string, 0, len(s.entries))
+	for p := range s.entries {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+
+	var sb strings.Builder
+	for _, p := range paths {
+		e := s.entries[p]
+		if e.IsDir {
+			continue
+		}
+		files++
+		sb.WriteString(p)
+		sb.WriteByte(':')
+		sb.WriteString(strconv.FormatInt(e.Size, 10))
+		sb.WriteByte(':')
+		sb.WriteString(strconv.FormatInt(e.ModTime, 10))
+		sb.WriteByte('\n')
+	}
+	return hashString(sb.String()), files
+}
+
+// hashString is FNV-1a. It need not be cryptographic: it only has to notice that
+// something changed, and it has to do so identically across runs.
+func hashString(s string) string {
+	const (
+		offset = 14695981039346656037
+		prime  = 1099511628211
+	)
+	var h uint64 = offset
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= prime
+	}
+	return strconv.FormatUint(h, 16)
+}
 
 func (s *Snapshot) HasDir(rel string) bool {
 	e, ok := s.entries[clean(rel)]
@@ -169,6 +214,15 @@ func Scan(root string, ignore []string) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A file as root would index the root entry as a file and strip its IsDir
+	// flag, so refuse rather than return a snapshot with a lying root.
+	info, err := os.Stat(abs)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("not a directory: %s", abs)
+	}
 
 	m := newMatcher(ignore)
 	snap := &Snapshot{
@@ -215,7 +269,7 @@ func Scan(root string, ignore []string) (*Snapshot, error) {
 		if ierr != nil {
 			return nil
 		}
-		snap.entries[rel] = Entry{Size: info.Size()}
+		snap.entries[rel] = Entry{Size: info.Size(), ModTime: info.ModTime().UnixNano()}
 		snap.bump(rel)
 		return nil
 	})

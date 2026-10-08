@@ -15,6 +15,7 @@ import (
 	"github.com/m-mdy-m/psx/internal/flags"
 	"github.com/m-mdy-m/psx/internal/logger"
 	"github.com/m-mdy-m/psx/internal/rules"
+	"github.com/m-mdy-m/psx/internal/tree"
 	"github.com/m-mdy-m/psx/internal/watch"
 )
 
@@ -62,13 +63,9 @@ func runWatch(args []string, opts *flags.Options) error {
 		return err
 	}
 
-	runCheck := func() (*rules.ExecutionResult, error) {
-		// Rescan on every evaluation so fixes applied by a previous iteration
-		// are visible to the next one.
-		snap, err := watch.Snapshot(ctx.Path, ctx.Config.Ignore)
-		if err != nil {
-			return nil, err
-		}
+	// watch.Run hands over the very snapshot it fingerprinted, so the verdict is
+	// reached from the same view of the tree that detected the change.
+	runCheck := func(snap *tree.Snapshot) (*rules.ExecutionResult, error) {
 		res, err := rules.ExecuteSnapshot(ctx.Config, ctx.RuleContext(), snap)
 		if err != nil {
 			return nil, err
