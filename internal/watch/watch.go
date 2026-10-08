@@ -42,6 +42,15 @@ func watchIgnore(user []string) []string {
 // same one the check is evaluated against, so a file cannot change between the
 // fingerprint and the verdict.
 func Run(ctx context.Context, opts Options, runCheck func(*tree.Snapshot) (*rules.ExecutionResult, error), onChange func(prev, cur *rules.ExecutionResult)) error {
+	// time.NewTicker panics on a non-positive interval, and a zero here would
+	// mean an unpopulated Options rather than a deliberate request.
+	if opts.Interval <= 0 {
+		return fmt.Errorf("watch interval must be positive, got %v", opts.Interval)
+	}
+	if opts.Debounce < 0 {
+		return fmt.Errorf("watch debounce must not be negative, got %v", opts.Debounce)
+	}
+
 	root := opts.Root
 
 	snap, err := tree.Scan(root, watchIgnore(opts.Ignore))
@@ -127,13 +136,6 @@ type Options struct {
 	Interval   time.Duration
 	Debounce   time.Duration
 	OnceClean  bool
-}
-
-func Defaults() Options {
-	return Options{
-		Interval: 1500 * time.Millisecond,
-		Debounce: 250 * time.Millisecond,
-	}
 }
 
 func isClean(res *rules.ExecutionResult) bool {

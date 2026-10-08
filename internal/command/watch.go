@@ -21,9 +21,6 @@ import (
 
 func newWatchCmd() *cobra.Command {
 	opts := baseOptions()
-	wOpts := watch.Defaults()
-	opts.Watch.Interval = wOpts.Interval
-	opts.Watch.Debounce = wOpts.Debounce
 
 	cmd := &cobra.Command{
 		Use:   "watch [path]",

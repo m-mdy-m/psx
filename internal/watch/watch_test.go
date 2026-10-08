@@ -26,6 +26,16 @@ func rr(id string, st rules.Status, sev config.Severity, msg string) rules.RuleR
 	return rules.RuleResult{RuleID: id, Status: st, Severity: sev, Message: msg}
 }
 
+// touch moves a file's modification time into the future, so a test does not
+// depend on the filesystem's timestamp granularity.
+func touch(t *testing.T, path string) {
+	t.Helper()
+	future := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(path, future, future); err != nil {
+		t.Fatalf("Chtimes(%s): %v", path, err)
+	}
+}
+
 func resultOf(list ...rules.RuleResult) *rules.ExecutionResult {
 	out := &rules.ExecutionResult{Results: list}
 	rules.Recount(out)
@@ -54,11 +64,16 @@ func TestFingerprintIsStableForAnUnchangedTree(t *testing.T) {
 func TestFingerprintDetectsContentRenameAndRemoval(t *testing.T) {
 	t.Run("edit", func(t *testing.T) {
 		root := t.TempDir()
-		write(t, filepath.Join(root, "a.txt"), "one\n")
+		path := filepath.Join(root, "a.txt")
+		write(t, path, "one\n")
 		before, _ := scan(t, root)
 
 		// Same byte count, different content: only mtime can catch this.
-		write(t, filepath.Join(root, "a.txt"), "two\n")
+		write(t, path, "two\n")
+		// Some filesystems have a coarse mtime clock, so two writes inside one
+		// tick would be invisible. Move the clock forward explicitly.
+		touch(t, path)
+
 		if after, _ := scan(t, root); after == before {
 			t.Error("an edit that preserves file size was not detected")
 		}
@@ -277,28 +292,39 @@ func TestIsCleanIgnoresSkippedRules(t *testing.T) {
 
 // --- Options -----------------------------------------------------------------
 
-func TestDefaultsAreUsable(t *testing.T) {
-	d := Defaults()
-	if d.Interval <= 0 || d.Debounce <= 0 {
-		t.Fatalf("Defaults() = %+v, want positive interval and debounce", d)
-	}
-	if d.Debounce >= d.Interval {
-		t.Errorf("Debounce (%v) must be shorter than Interval (%v), otherwise a change is noticed late",
-			d.Debounce, d.Interval)
-	}
-	if d.Interval > 10*time.Second {
-		t.Errorf("default Interval %v is too long to feel responsive", d.Interval)
+// --- Options -----------------------------------------------------------------
+
+// A zero interval would reach time.NewTicker, which panics rather than
+// returning an error, so an unpopulated Options must be refused up front.
+func TestRunRejectsNonPositiveTimings(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "a.txt"), "x\n")
+
+	for _, opts := range []Options{
+		{Root: root},
+		{Root: root, Interval: -time.Second},
+		{Root: root, Interval: time.Millisecond, Debounce: -time.Millisecond},
+	} {
+		err := Run(context.Background(), opts,
+			func(*tree.Snapshot) (*rules.ExecutionResult, error) {
+				t.Errorf("the check must not run with interval %v", opts.Interval)
+				return resultOf(), nil
+			},
+			nil)
+		if err == nil {
+			t.Errorf("Run accepted interval=%v debounce=%v", opts.Interval, opts.Debounce)
+		}
 	}
 }
 
 // --- Run ---------------------------------------------------------------------
 
 func fastOptions(root string) Options {
-	o := Defaults()
-	o.Root = root
-	o.Interval = 10 * time.Millisecond
-	o.Debounce = time.Millisecond
-	return o
+	return Options{
+		Root:     root,
+		Interval: 10 * time.Millisecond,
+		Debounce: time.Millisecond,
+	}
 }
 
 // The snapshot that detects a change must be the one the check is evaluated

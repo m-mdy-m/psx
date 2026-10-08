@@ -93,8 +93,10 @@ func Defaults() Options {
 			Answers:     map[string]string{},
 		},
 		Watch: Watch{
-			Interval: 2 * time.Second,
-			Debounce: 300 * time.Millisecond,
+			// Poll rarely and settle fast: a change should be noticed
+			// promptly without rescanning on every keystroke.
+			Interval: 1500 * time.Millisecond,
+			Debounce: 250 * time.Millisecond,
 		},
 	}
 }
