@@ -1,0 +1,48 @@
+version: 1
+
+project:
+  type: go
+  kind: cli
+
+rules:
+  readme: error
+  license: error
+  package_manager: error
+  lockfile: error
+  gitignore: error
+  gitattributes: info
+  changelog: error
+  src_folder: error
+  tests_folder: error
+  scripts_folder: error
+  makefile: error
+  docs_folder: info
+  contributing: info
+  security: info
+  code_of_conduct: info
+  pull_request_template: info
+  issue_templates: info
+  ci_config: error
+  release_workflow: error
+  dependency_updates: error
+  workflow_ci: error
+  workflow_release: error
+  editorconfig: info
+  dockerfile: info
+  dockerignore: info
+  docker_compose: info
+  code_owners: info
+
+ignore:
+  - .git/
+  - build/
+  - bin/
+  - dist/
+  - coverage/
+  - vendor/
+  - .psx/
+  - .psx-project.yml
+
+fix:
+  interactive: false
+  backup: false
