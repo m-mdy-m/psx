@@ -40,13 +40,11 @@ type Check struct {
 
 // Fix holds options for the fix command.
 type Fix struct {
-	RuleID        string
-	DryRun        bool
-	Force         bool
-	Interactive   bool
-	CreateBackups bool
-	Answers       map[string]string
-	Watch         bool
+	RuleID      string
+	DryRun      bool
+	Force       bool
+	Interactive bool
+	Answers     map[string]string
 }
 
 // Prompting requires an explicit request and a real terminal, so a run in CI or
@@ -68,7 +66,6 @@ type Watch struct {
 	Debounce time.Duration
 	Fix      bool
 	Once     bool
-	Format   string
 }
 
 // Options is the full parsed option set for a single invocation.
@@ -79,8 +76,6 @@ type Options struct {
 	Init   Init
 	Watch  Watch
 
-	// Path is the project directory to operate on.
-	Path string
 	// Version is the build version, set by the entry point.
 	Version string
 }
@@ -100,7 +95,6 @@ func Defaults() Options {
 		Watch: Watch{
 			Interval: 2 * time.Second,
 			Debounce: 300 * time.Millisecond,
-			Format:   FormatNDJSON,
 		},
 	}
 }
@@ -128,10 +122,6 @@ func (o *Options) Validate() error {
 
 	if o.Fix.DryRun && o.Fix.Force {
 		return errf("--dry-run and --force cannot be combined")
-	}
-	if o.Fix.Watch && !o.Fix.DryRun {
-		// Watch owns its own loop; a single-shot fix must not also watch.
-		o.Fix.Watch = false
 	}
 	return nil
 }

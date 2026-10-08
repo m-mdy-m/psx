@@ -102,7 +102,7 @@ func runFixCommand(cmd *cobra.Command, args []string, opts *flags.Options) error
 		Context:       ctx.RuleContext(),
 		Interactive:   opts.Fix.Interactive,
 		DryRun:        opts.Fix.DryRun,
-		CreateBackups: ctx.Config.Fix.Backup || opts.Fix.CreateBackups,
+		CreateBackups: ctx.Config.Fix.Backup,
 		Force:         opts.Fix.Force,
 	}, targets, resourceOptions(ctx, *opts))
 
