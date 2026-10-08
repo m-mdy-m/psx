@@ -110,7 +110,7 @@ add_to_path() {
     local dir="$1"
     local shell_name shell_rc
 
-    local shell_name="${SHELL##*/}"
+    shell_name="${SHELL##*/}"
     case "$shell_name" in
         zsh)  shell_rc="$HOME/.zshrc" ;;
         bash) shell_rc="$HOME/.bashrc" ;;
@@ -206,7 +206,7 @@ install_from_github() {
     binary_name="psx-${platform}"
 
     tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "$tmp_dir"' EXIT
+    trap 'rm -rf "${tmp_dir:-}"' EXIT
 
     archive="${tmp_dir}/${archive_name}"
     checksums="${tmp_dir}/checksums.txt"
