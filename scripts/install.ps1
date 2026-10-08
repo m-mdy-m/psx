@@ -256,7 +256,7 @@ function Uninstall-PSX {
                 Write-Host "✓ Removed $location" -ForegroundColor Green
                 $found = $true
             } catch {
-                Fail "Failed to remove $location: $($_.Exception.Message)"
+                Fail ("Failed to remove {0}: {1}" -f $location, $_.Exception.Message)
             }
         }
     }
