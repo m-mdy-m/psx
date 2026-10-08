@@ -11,6 +11,7 @@ BINARY_NAME='psx'
 REPO='m-mdy-m/psx'
 INSTALL_DIR='/usr/local/bin'
 USER_INSTALL_DIR="${HOME}/.local/bin"
+TMP_DIR=''
 
 say()  { printf '%b\n' "$*"; }
 ok()   { say "${GREEN}$*${NC}"; }
@@ -178,7 +179,7 @@ install_binary() {
 
 install_from_github() {
     local platform version release_version archive_name binary_name
-    local tmp_dir archive checksums extracted_binary checksum_binary
+    local archive checksums extracted_binary
 
     platform="$(detect_platform)"
     version="${1:-latest}"
@@ -205,12 +206,12 @@ install_from_github() {
     archive_name="psx-${release_version}-${platform}.tar.gz"
     binary_name="psx-${platform}"
 
-    tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "${tmp_dir:-}"' EXIT
+    TMP_DIR="$(mktemp -d)"
+    trap 'rm -rf "${TMP_DIR:-}"' EXIT
 
-    archive="${tmp_dir}/${archive_name}"
-    checksums="${tmp_dir}/checksums.txt"
-    extracted_binary="${tmp_dir}/${binary_name}"
+    archive="${TMP_DIR}/${archive_name}"
+    checksums="${TMP_DIR}/checksums.txt"
+    extracted_binary="${TMP_DIR}/${binary_name}"
     checksum_binary="${tmp_dir}/${binary_name}.checksum"
 
     warn "Downloading ${archive_name}..."
@@ -225,7 +226,7 @@ install_from_github() {
     download "https://github.com/${REPO}/releases/download/${release_version}/checksums.txt" "$checksums" \
         || fail 'Could not download release checksums'
 
-    tar -xzf "$archive" -C "$tmp_dir" \
+    tar -xzf "$archive" -C "$TMP_DIR" \
         || fail 'Could not extract release archive'
 
     [ -f "$extracted_binary" ] || fail "Release archive does not contain ${binary_name}"
