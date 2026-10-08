@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-10-08
+
+### Fixed
+
+* **Linux installation failed with `Not Found`.** The Unix installer used outdated asset names such as `psx-linux-amd64`, while releases publish platform assets using the `x64` naming scheme.
+* **Windows installation failed to download the binary.** The PowerShell installer requested `psx-windows-amd64.exe`, while the published release asset is `psx-windows-x64.exe`.
+* **Installers could install invalid downloads as executables.** The Unix installer could save a GitHub `404 Not Found` response as `psx` and attempt to execute it.
+* **Improved download validation.** Installers now verify that the downloaded release artifact is valid before installing it.
+* **Release archive handling fixed.** Linux and macOS installers now download and extract the corresponding release archives instead of expecting a raw binary with an outdated filename.
+* **Checksum verification improved.** Installers validate the downloaded binary against the release checksum information when available.
+* **PowerShell installer no longer terminates the host session on normal installation errors.** This makes usage through `irm ... | iex` safer and more predictable.
+* **PATH handling improved.** User-level installations correctly update the user's PATH and current PowerShell session where possible.
+* **Build and release naming consistency.** Build scripts now use the same platform naming convention as the published GitHub release assets.
+
+### Changed
+
+* Standardized release platform names to:
+
+  * `linux-x64`
+  * `linux-arm64`
+  * `darwin-x64`
+  * `darwin-arm64`
+  * `windows-x64`
+* Updated Unix and Windows installation scripts to match the actual GitHub release asset layout.
+* Improved installer error messages so failed downloads are reported clearly instead of appearing as successful installations.
+
+### Installation
+
+Install the latest release with:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.sh | bash
+```
+
+Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/m-mdy-m/psx/main/scripts/install.ps1 | iex
+```
+
+[0.3.1]: https://github.com/m-mdy-m/psx/releases/tag/v0.3.1
+[0.3.0]: https://github.com/m-mdy-m/psx/releases/tag/v0.3.0
+
+
 ## [3.0.0] - Unreleased
 
 Major release. The CLI, the rule system and the internals were reworked. Every item below
