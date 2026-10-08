@@ -28,20 +28,21 @@ type marker struct {
 	score float64
 }
 
-// markers are ordered by specificity; the first match wins.
+// markers are ordered by descending score; the first match wins.
 var markers = []marker{
+	{"tsconfig.json", "nodejs", 0.98},
 	{"go.mod", "go", 0.97},
+	{"package.json", "nodejs", 0.95},
 	{"Cargo.toml", "rust", 0.95},
 	{"pyproject.toml", "python", 0.93},
-	{"setup.py", "python", 0.75},
-	{"requirements.txt", "python", 0.7},
-	{"package.json", "nodejs", 0.95},
-	{"deno.json", "nodejs", 0.8},
 	{"composer.json", "php", 0.9},
 	{"Gemfile", "ruby", 0.9},
 	{"pom.xml", "java", 0.9},
 	{"build.gradle", "java", 0.85},
+	{"deno.json", "nodejs", 0.8},
 	{"CMakeLists.txt", "c", 0.8},
+	{"setup.py", "python", 0.75},
+	{"requirements.txt", "python", 0.7},
 }
 
 // workspaceMarkers indicate a multi-package repository.
@@ -79,19 +80,22 @@ func Detect(root string, ignore []string) (*Profile, error) {
 		return nil, err
 	}
 
-	entries := make(map[string]bool, 256)
+	// files and dirs are kept apart: a directory called go.mod is not a
+	// module manifest, and treating it as one misreports the project.
+	files := make(map[string]bool, 256)
 	dirs := make(map[string]bool, 64)
 	for _, p := range snap.Paths() {
-		entries[p] = true
 		if snap.HasDir(p) {
 			dirs[p] = true
+			continue
 		}
+		files[p] = true
 	}
 
 	p := &Profile{ProjectType: "generic", Kind: "app", Confidence: 0.4}
 
 	for _, m := range markers {
-		if entries[m.file] {
+		if files[m.file] {
 			p.ProjectType = m.lang
 			p.Confidence = m.score
 			p.Signals = append(p.Signals, m.file)
@@ -99,14 +103,8 @@ func Detect(root string, ignore []string) (*Profile, error) {
 		}
 	}
 
-	// A TypeScript config refines nodejs but does not change the language.
-	if p.ProjectType == "nodejs" && entries["tsconfig.json"] {
-		p.Signals = append(p.Signals, "tsconfig.json")
-		p.Confidence = 0.98
-	}
-
 	for _, w := range workspaceMarkers {
-		if entries[w.file] {
+		if files[w.file] {
 			p.Kind = w.kind
 			p.Signals = append(p.Signals, w.file)
 			break
@@ -122,17 +120,17 @@ func Detect(root string, ignore []string) (*Profile, error) {
 		}
 	}
 
-	if p.Kind == "app" && (entries["main.go"] || hasPrefixDir(dirs, "cmd/")) {
+	if p.Kind == "app" && (files["main.go"] || hasPrefixDir(dirs, "cmd/")) {
 		p.Kind = "cli"
 		p.Signals = append(p.Signals, "cmd/")
 	}
-	if p.Kind == "app" && (entries["index.js"] || entries["index.ts"]) {
+	if p.Kind == "app" && (files["index.js"] || files["index.ts"]) {
 		p.Kind = "library"
 		p.Signals = append(p.Signals, "index entry point")
 	}
 
 	p.Workspace = workspaceGlobs(p)
-	p.Managers = resources.ManagersFor(p.ProjectType, entries)
+	p.Managers = resources.ManagersFor(p.ProjectType, files)
 	return p, nil
 }
 

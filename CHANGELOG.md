@@ -84,6 +84,31 @@ Correctness bugs that produced wrong results rather than errors:
   content written.
 - **`psx fix` counted directories as files.** The closing line read `Created 9 file(s)`
   when four of the nine were directories.
+- **`psx detect` crashed on any project it could not recognise.** With no recognised
+  manifest the type falls back to `generic`, whose profile declares an empty package
+  manager list; reading a "preferred" manager out of that empty slice panicked. Every
+  non-Go, Node, Rust or Python project crashed with a stack trace.
+- **Detection picked the wrong language when two manifests were present.** The markers
+  claimed to be ordered by specificity but were not: `package.json` (0.95) sat below
+  `requirements.txt` (0.70), so a project with both was reported as Python.
+- **A directory named `go.mod` was treated as a module manifest.** The path index mixed
+  files and directories, so any manifest check could match a directory.
+- **An npm project was offered a pnpm lockfile hint.** Every Node package manager shares
+  `package.json` and differs only by its lockfile, so filtering on the manifest could not
+  discriminate. Lockfiles are now matched first.
+- **The watcher's ignore list was ignored.** It accepted the configured patterns and
+  replaced them with a hardcoded `.git`/`node_modules`/`vendor` list, so a rebuild writing
+  to an ignored directory re-triggered a full re-check. It now shares `tree.Scan` with the
+  check itself, and the tree is walked once per change rather than twice.
+- **`watch` compared against a nil result.** `Compare(nil, nil)` panicked; it guarded the
+  previous result but not the current one.
+- **`watch` panicked on a zero interval.** `time.NewTicker` panics on a non-positive
+  interval, so an unpopulated `Options` crashed instead of reporting a problem.
+- **`tree.Scan` returned an empty snapshot for a directory that did not exist**, and for a
+  file passed as root, indexing the root entry as a file with its `IsDir` flag cleared.
+- **`flags` carried three fields nothing could reach.** `Fix.Watch` was never set by a flag,
+  `Fix.CreateBackups` had no `--backup` flag behind it, and `Watch.Format` was never read.
+  Two `Defaults()` also disagreed on the watch timings and one silently overwrote the other.
 
 ### Added
 
